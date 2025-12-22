@@ -1,87 +1,100 @@
 import torch
-import torchvision
-from torchvision import transforms
-from torch.utils.data import DataLoader
 from torch import nn
-from torch.nn import functional as F
-from typing import List
-
+from typing import List, Callable
 
 
 class VariationalAutoEncoder(nn.Module):
 
-   def __init__(self, latentDim: int, hiddenDim: List = [512, 256], inputDim: int = 784):
-      super(VariationalAutoEncoder, self).__init__()
+    def __init__(
+        self,
+        latentDim: int,
+        hiddenDim: List[int] = [512, 256],
+        inputDim: int = 784,
+        sigma: float = 0.5,
+        activation_enc: Callable = nn.ReLU,
+        activation_dec: Callable = nn.ReLU,
+        activation_out: Callable = torch.sigmoid
+    ):
+        super(VariationalAutoEncoder, self).__init__()
 
-      self.latentDim = latentDim
-      self.hiddenDim = hiddenDim
-      
-      ####--------------ENCODER--------------
+        self.latentDim = latentDim
+        self.hiddenDim = hiddenDim
+        self.sigma = sigma
+        self.activation_out = activation_out
 
-      #Initialize the initial dimension to be inputDim
-      currentDim = inputDim
+        # ---------------- ENCODER ----------------
+        currentDim = inputDim
+        modules = []
 
-      modules = []
-
-      #Define the architecture dynamically
-      for h in self.hiddenDim:
-         modules.append(
-            nn.Sequential(
-               nn.Linear(currentDim, h),
-               nn.ReLU()
+        for h in hiddenDim:
+            modules.append(
+                nn.Sequential(
+                    nn.Linear(currentDim, h),
+                    activation_enc()
+                )
             )
-         )
-         #update the value of the current dimesion
-         currentDim = h
+            currentDim = h
 
-      self.Encoder = nn.Sequential(*modules)
+        self.Encoder = nn.Sequential(*modules)
 
-      #Define the latent space 
-      self.EncoderMu = nn.Linear(hiddenDim[-1], latentDim)
-      self.EncoderSigma = nn.Linear(hiddenDim[-1], latentDim)
+        # Latent layers
+        self.LatentLayerMu = nn.Linear(currentDim, latentDim)
+        self.LatentLayerSigma = nn.Linear(currentDim, latentDim)
 
+        # Identity module for hooking latent space
+        self.LatentSpace = nn.Identity()
 
-      ####--------------DECORDER--------------
-      modules = []
-      currentDim = latentDim
+        # ---------------- DECODER ----------------
+        modules = []
+        currentDim = latentDim
+        reversedDim = hiddenDim[::-1]
 
-      #Layers in the decoder are inverted w.r.t encoder
-      reversedDim = hiddenDim[::-1]
-
-      for h in reversedDim:
-         modules.append(
-            nn.Sequential(
-               nn.Linear(currentDim, h),
-               nn.ReLU()
+        for h in reversedDim:
+            modules.append(
+                nn.Sequential(
+                    nn.Linear(currentDim, h),
+                    activation_dec()
+                )
             )
-         )
-         currentDim = h
+            currentDim = h
 
-      self.Decoder = nn.Sequential(*modules)
-      self.finalLayer = nn.Linear(currentDim, inputDim)
+        self.Decoder = nn.Sequential(*modules)
+        self.OutputLayer = nn.Linear(currentDim, inputDim)
 
-   
-   def Encoding(self, x):
-      #Flatten the data
-      x = x.view(x.size(0), -1)
-      x = self.Encoder(x)
-      mean, logVar = self.EncoderMu(x), self.EncoderSigma(x)
-      return mean, logVar
-   
-   def Reparametrization(self, mean, logVar):
-      std = torch.exp(0.5*logVar)
-      epsilon = torch.rand_like(std)
-      return mean + std*epsilon
-   
-   def Decoding(self, z):
-      z = self.Decoder(z)
-      result = self.finalLayer(z)
-      return torch.sigmoid(result)
-   
-   # Called in training, inside are called Encoding, Reparametrization, Decoding
-   def forward(self, x):
-      mean, logVar = self.Encoding(x)
-      z = self.Reparametrization(mean, logVar)
-      result = self.Decoding(z)
+        # Identity module for hooking output space
+        self.OutputSpace = nn.Identity()
 
-      return result, z, mean, logVar
+
+    def Encoding(self, x):
+        x = x.view(x.size(0), -1)
+        h = self.Encoder(x)
+
+        mean = self.LatentLayerMu(h)
+        logVar = self.LatentLayerSigma(h)
+
+        std = torch.exp(0.5 * logVar)
+        eps = torch.randn_like(std) * self.sigma
+        z = mean + std * eps
+
+        # Pass through identity module so hooks can capture it
+        z = self.LatentSpace(z)
+
+        return z
+
+
+    def Decoding(self, z):
+        y = self.Decoder(z)
+        y = self.OutputLayer(y)
+
+        out = self.activation_out(y)
+
+        # Pass through identity module so hooks can capture it
+        out = self.OutputSpace(out)
+
+        return out
+
+
+    def forward(self, x):
+        z = self.Encoding(x)
+        out = self.Decoding(z)
+        return out, z
