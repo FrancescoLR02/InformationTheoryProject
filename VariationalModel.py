@@ -13,7 +13,8 @@ class VariationalAutoEncoder(nn.Module):
         sigma: float = 0.5,
         activation_enc: Callable = nn.ReLU,
         activation_dec: Callable = nn.ReLU,
-        activation_out: Callable = torch.sigmoid
+        activation_out: Callable = torch.sigmoid,
+        Variational: bool = True
     ):
         super(VariationalAutoEncoder, self).__init__()
 
@@ -21,6 +22,7 @@ class VariationalAutoEncoder(nn.Module):
         self.hiddenDim = hiddenDim
         self.sigma = sigma
         self.activation_out = activation_out
+        self.Variational = Variational
 
         # ---------------- ENCODER ----------------
         currentDim = inputDim
@@ -37,12 +39,15 @@ class VariationalAutoEncoder(nn.Module):
 
         self.Encoder = nn.Sequential(*modules)
 
-        # Latent layers
-        self.LatentLayerMu = nn.Linear(currentDim, latentDim)
-        self.LatentLayerSigma = nn.Linear(currentDim, latentDim)
-
-        # Identity module for hooking latent space
-        self.LatentSpace = nn.Identity()
+        # Latent layers: either variational (mu/logVar) or direct linear mapping
+        if self.Variational:
+            self.LatentLayerMu = nn.Linear(currentDim, latentDim)
+            self.LatentLayerSigma = nn.Linear(currentDim, latentDim)
+            # Identity module for hooking latent space
+            self.LatentSpace = nn.Identity()
+        else:
+            # learn latent space directly (no mean/var)
+            self.LatentSpace = nn.Linear(currentDim, latentDim)
 
         # ---------------- DECODER ----------------
         modules = []
@@ -69,15 +74,19 @@ class VariationalAutoEncoder(nn.Module):
         x = x.view(x.size(0), -1)
         h = self.Encoder(x)
 
-        mean = self.LatentLayerMu(h)
-        logVar = self.LatentLayerSigma(h)
+        if self.Variational:
+            mean = self.LatentLayerMu(h)
+            logVar = self.LatentLayerSigma(h)
 
-        std = torch.exp(0.5 * logVar)
-        eps = torch.randn_like(std) * self.sigma
-        z = mean + std * eps
+            std = torch.exp(0.5 * logVar)
+            eps = torch.randn_like(std) * self.sigma
+            z = mean + std * eps
 
-        # Pass through identity module so hooks can capture it
-        z = self.LatentSpace(z)
+            # Pass through identity module so hooks can capture it
+            z = self.LatentSpace(z)
+        else:
+            # direct mapping to latent space (no sampling)
+            z = self.LatentSpace(h)
 
         return z
 
