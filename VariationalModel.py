@@ -62,7 +62,6 @@ class VariationalAutoEncoder(nn.Module):
 
    
    def Encoding(self, x):
-
       #Flatten the data
       x = x.view(x.size(0), -1)
       x = self.Encoder(x)
@@ -79,6 +78,7 @@ class VariationalAutoEncoder(nn.Module):
       result = self.finalLayer(z)
       return torch.sigmoid(result)
    
+   # Called in training, inside are called Encoding, Reparametrization, Decoding
    def forward(self, x):
       mean, logVar = self.Encoding(x)
       z = self.Reparametrization(mean, logVar)
