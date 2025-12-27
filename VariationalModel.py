@@ -1,7 +1,8 @@
 import torch
 from torch import nn
 from typing import List, Callable
-
+import numpy as np
+import matplotlib.pyplot as plt
 
 class VariationalAutoEncoder(nn.Module):
 
@@ -10,7 +11,7 @@ class VariationalAutoEncoder(nn.Module):
         latentDim: int,
         hiddenDim: List[int] = [512, 256],
         inputDim: int = 784,
-        sigma: float = 0.5,
+        sigmaVAE: float = 0.5,
         activation_enc: Callable = nn.ReLU,
         activation_dec: Callable = nn.ReLU,
         activation_out: Callable = torch.sigmoid,
@@ -20,9 +21,16 @@ class VariationalAutoEncoder(nn.Module):
 
         self.latentDim = latentDim
         self.hiddenDim = hiddenDim
-        self.sigma = sigma
+        self.sigma = sigmaVAE
         self.activation_out = activation_out
         self.Variational = Variational
+
+        self.train_loss_history = []
+        self.val_loss_history = []
+
+
+        # Identity module for hooking input and output space
+        self.InputSpace  = nn.Identity()
 
         # ---------------- ENCODER ----------------
         currentDim = inputDim
@@ -40,7 +48,6 @@ class VariationalAutoEncoder(nn.Module):
         self.Encoder = nn.Sequential(*modules)
 
         # ---------------- LATENT ----------------
-        # Latent layers: either variational (mu/logVar) or direct linear mapping
         if self.Variational:
             self.LatentLayerMu = nn.Linear(currentDim, latentDim)
             self.LatentLayerSigma = nn.Linear(currentDim, latentDim)
@@ -67,15 +74,14 @@ class VariationalAutoEncoder(nn.Module):
         self.Decoder = nn.Sequential(*modules)
         self.OutputLayer = nn.Linear(currentDim, inputDim)
 
-        # Identity module for hooking input and output space
-        self.InputSpace  = nn.Identity()
+        # Identity module for hooking output space
         self.OutputSpace = nn.Identity()
 
 
-    def Encoding(self, x):
 
+    def Encoding(self, x):
         x = x.view(x.size(0), -1)
-        x = self.InputSpace(x) # So hook can take also the input
+        x = self.InputSpace(x) # Hook input
         
         h = self.Encoder(x)
 
@@ -87,10 +93,9 @@ class VariationalAutoEncoder(nn.Module):
             eps = torch.randn_like(std) * self.sigma
             z = mean + std * eps
 
-            # Pass through identity module so hooks can capture it
+            # Hook latent
             z = self.LatentSpace(z)
         else:
-            # direct mapping to latent space (no sampling)
             z = self.LatentSpace(h)
 
         return z
@@ -102,7 +107,7 @@ class VariationalAutoEncoder(nn.Module):
 
         out = self.activation_out(y)
 
-        # Pass through identity module so hooks can capture it
+        # Hook output
         out = self.OutputSpace(out)
 
         return out
@@ -112,3 +117,21 @@ class VariationalAutoEncoder(nn.Module):
         z = self.Encoding(x)
         out = self.Decoding(z)
         return out, z
+    
+
+    def plot_loss(self):
+        epochs = range(1, len(self.train_loss_history) + 1)
+
+        plt.figure(figsize=(10, 5))
+        plt.plot(epochs, self.train_loss_history, color='blue', linewidth=2, label='Training loss')
+        
+        if self.val_loss_history:
+            plt.plot(epochs, self.val_loss_history, color='red', linewidth=2, label='Validation loss')
+
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.title("Training vs Validation Loss")
+        plt.legend()
+        plt.grid(alpha=0.3)
+        plt.tight_layout()
+        plt.show()
