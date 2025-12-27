@@ -39,6 +39,7 @@ class VariationalAutoEncoder(nn.Module):
 
         self.Encoder = nn.Sequential(*modules)
 
+        # ---------------- LATENT ----------------
         # Latent layers: either variational (mu/logVar) or direct linear mapping
         if self.Variational:
             self.LatentLayerMu = nn.Linear(currentDim, latentDim)
@@ -66,12 +67,16 @@ class VariationalAutoEncoder(nn.Module):
         self.Decoder = nn.Sequential(*modules)
         self.OutputLayer = nn.Linear(currentDim, inputDim)
 
-        # Identity module for hooking output space
+        # Identity module for hooking input and output space
+        self.InputSpace  = nn.Identity()
         self.OutputSpace = nn.Identity()
 
 
     def Encoding(self, x):
+
         x = x.view(x.size(0), -1)
+        x = self.InputSpace(x) # So hook can take also the input
+        
         h = self.Encoder(x)
 
         if self.Variational:
