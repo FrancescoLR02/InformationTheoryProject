@@ -90,15 +90,17 @@ class VariationalAutoEncoder(nn.Module):
             logVar = self.LatentLayerSigma(h)
 
             std = torch.exp(0.5 * logVar)
-            eps = torch.randn_like(std) * self.sigma
+            eps = torch.randn_like(std) #* self.sigma
             z = mean + std * eps
 
             # Hook latent
             z = self.LatentSpace(z)
+
+            return z, mean, logVar
         else:
             z = self.LatentSpace(h)
 
-        return z
+            return z, None, None
 
 
     def Decoding(self, z):
@@ -114,9 +116,9 @@ class VariationalAutoEncoder(nn.Module):
 
 
     def forward(self, x):
-        z = self.Encoding(x)
+        z, mean, logVar = self.Encoding(x)
         out = self.Decoding(z)
-        return out, z
+        return out, z, mean, logVar
     
 
     def plot_loss(self):
