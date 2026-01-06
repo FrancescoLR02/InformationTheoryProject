@@ -1,5 +1,6 @@
 import os
 import random
+import pickle
 from typing import List
 import numpy as np
 import pandas as pd
@@ -161,10 +162,11 @@ def plot_kde_geometry(recorder, mi_estimator, part="encoder", layer=1, neuron=No
 
 
 
-def PlotInfoPlane(mi_history_encoder, mi_history_decoder, title_suffix="", start_epoch=1, end_epoch=-1, Step=5):
+def PlotInfoPlane(mi_history_encoder, mi_history_decoder, title_suffix="", suptitle="", start_epoch=1, end_epoch=-1, Step=5):
 
    fig = plt.figure(figsize=(16, 6))
    gs = fig.add_gridspec(1, 3, width_ratios=[6, 6, 0.2], wspace=0.3)
+   if suptitle != "": fig.suptitle(suptitle, size=16, weight="bold")
 
    ax_enc = fig.add_subplot(gs[0, 0])
    ax_dec = fig.add_subplot(gs[0, 1])
@@ -272,6 +274,16 @@ def PlotInfoPlane(mi_history_encoder, mi_history_decoder, title_suffix="", start
 
    #plt.show()
 
+
+
+def read_MI_hist(filename):
+    try:
+        with open(filename, mode="rb") as f:
+            MI_histories = pickle.load(f)
+            return MI_histories
+    except FileNotFoundError:
+        print(f"Errore: {filename} non esiste")
+    
 
 def ShowSomeImages(model, testDataset, device):
 
