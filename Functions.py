@@ -270,7 +270,7 @@ def PlotInfoPlane(mi_history_encoder, mi_history_decoder, title_suffix="", start
    cbar.set_ticklabels(epoch_range)
    cbar.set_label("Epoch", fontsize=14)
 
-   plt.show()
+   #plt.show()
 
 
 def ShowSomeImages(model, testDataset, device):
