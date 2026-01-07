@@ -3,6 +3,28 @@ from torch import nn
 from typing import List, Callable
 import numpy as np
 import matplotlib.pyplot as plt
+import torchvision
+from torchvision import transforms
+
+
+class BinarizeWithTemperature(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, temperature):
+        ctx.save_for_backward(input)
+        ctx.temperature = temperature
+        # Forward: sigmoid then hard binarization (0 or 1)
+        x_sigmoid = torch.sigmoid(input)
+        return (x_sigmoid > 0.5).float()
+    
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, = ctx.saved_tensors
+        temperature = ctx.temperature
+        # Backward: gradient of sigmoid with temperature
+        sig = torch.sigmoid(input / temperature)
+        grad_input = grad_output * sig * (1 - sig) / temperature
+        return grad_input, None
+
 
 class VariationalAutoEncoder(nn.Module):
 
@@ -15,15 +37,23 @@ class VariationalAutoEncoder(nn.Module):
         activation_enc: Callable = nn.ReLU,
         activation_dec: Callable = nn.ReLU,
         activation_out: Callable = torch.sigmoid,
+        binarize: str = "no",
+        temperature: float = 1,
         Variational: bool = True
     ):
         super(VariationalAutoEncoder, self).__init__()
+
+        # Validate binarize parameter
+        if binarize not in ["no", "all", "test"]:
+            raise ValueError(f"binarize must be 'no', 'all', or 'test', got '{binarize}'")
 
         self.latentDim = latentDim
         self.hiddenDim = hiddenDim
         self.sigma = sigmaVAE
         self.activation_out = activation_out
         self.Variational = Variational
+        self.binarize = binarize
+        self.temperature = temperature
 
         self.train_loss_history = []
         self.val_loss_history = []
@@ -55,7 +85,8 @@ class VariationalAutoEncoder(nn.Module):
             self.LatentSpace = nn.Identity()
         else:
             # learn latent space directly (no mean/var)
-            self.LatentSpace = nn.Linear(currentDim, latentDim)
+            self.LatentLayer = nn.Linear(currentDim, latentDim)
+            self.LatentSpace = nn.Identity()
 
         # ---------------- DECODER ----------------
         modules = []
@@ -93,12 +124,32 @@ class VariationalAutoEncoder(nn.Module):
             eps = torch.randn_like(std) #* self.sigma
             z = mean + std * eps
 
+            # Binarize latent based on mode
+            should_binarize = (self.binarize == "all") or \
+                            (self.binarize == "test" and not self.training)
+            
+            if should_binarize:
+                # Apply binarization with temperature-based backward
+                z = BinarizeWithTemperature.apply(z, self.temperature)
+
             # Hook latent
             z = self.LatentSpace(z)
 
             return z, mean, logVar
+            
         else:
-            z = self.LatentSpace(h)
+            z = self.LatentLayer(h)
+
+            # Binarize latent based on mode
+            should_binarize = (self.binarize == "all") or \
+                            (self.binarize == "test" and not self.training)
+            
+            if should_binarize:
+                # Apply binarization with temperature-based backward
+                z = BinarizeWithTemperature.apply(z, self.temperature)
+
+            # Hook latent
+            z = self.LatentSpace(z)
 
             return z, None, None
 
@@ -108,6 +159,14 @@ class VariationalAutoEncoder(nn.Module):
         y = self.OutputLayer(y)
 
         out = self.activation_out(y)
+
+        # Binarize output based on mode
+        should_binarize = (self.binarize == "all") or \
+                        (self.binarize == "test" and not self.training)
+        
+        if should_binarize:
+            # Apply binarization with temperature-based backward
+            out = BinarizeWithTemperature.apply(out, self.temperature)
 
         # Hook output
         out = self.OutputSpace(out)
