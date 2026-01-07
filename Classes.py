@@ -9,7 +9,7 @@ class ActivationRecorder:
         self.history = {}     # History: history[epoch][layer_name] -> array
 
     def hook(self, name):
-        def _hook(module, inputs, output): # PyTorch hook, module is a layer in the NN
+        def _hook(module, inputs, output):
             self.activations[name] = output.detach().cpu().numpy()
         return _hook
 
@@ -101,8 +101,8 @@ class MI_Estimator:
         data_sq = np.sum(data**2, axis=1, keepdims=True)
         dists_sq = data_sq + data_sq.T - 2 * data @ data.T
         
-        sigma_scaled = self.sigma  # self.sigma * np.sqrt(d) (Scale sigma by dimension) ***********************IMP**********************
-        
+        #sigma_scaled = self.sigma  # self.sigma * np.sqrt(d) (Scale sigma by dimension) ***********************IMP**********************
+        sigma_scaled = self.sigma * np.sqrt(d) 
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
 
@@ -149,28 +149,33 @@ class MI_Estimator:
 
     #The idea is to compute:
     #I(X;Z) = H(Z) - H(Z|X)
-    #Mutual information only on the stochastic layer (latent layer)
     def LatentMutualInformation(self, mean, logVar):
-        
         N, d = mean.shape
         eps = 1e-10
+        
+        #Calculate Conditional Entropy H(Z|X)
         var = np.exp(logVar) + eps
-        avrVar = np.mean(var)
-
-        #Conditional entropy H(Z|X)
         H_ZgivenX = 0.5 * np.mean(np.sum(np.log(2 * np.pi * np.e * var), axis=1))
-
-        #Marginal entropy H(Z)
+        
+        # Calculate empirical variance of the means to determine bandwidth
+        data_var = np.var(mean, axis=0).mean()
+        if data_var < eps: data_var = 1.0
+        
+        # Silverman's Rule for bandwidth (h)
+        bandwidth_sq = data_var * (N ** (-2 / (d + 4))) 
+        
+        # Compute distances (squared Euclidean)
         squareMean = np.sum(mean**2, axis=1, keepdims=True)
         dists = squareMean + squareMean.T - 2 * mean @ mean.T
-
-        #Exactly as before, but with logs
-        logKernels = -dists / (2 * avrVar)
-        log_pdf_sum = np.log(np.sum(np.exp(logKernels), axis=1, keepdims=True))
-        h_Z = -np.mean(-np.log(N) + log_pdf_sum)
+        logKernels = -dists / (2 * bandwidth_sq)
+    
+        log_pdf_sum = np.log(np.sum(np.exp(logKernels), axis=1, keepdims=True) + eps)
+        
+        # H(Z) = -E[log q(z)]
+        normalization = 0.5 * d * np.log(2 * np.pi * bandwidth_sq) + np.log(N)
+        h_Z = -np.mean(log_pdf_sum - normalization)
 
         return h_Z - H_ZgivenX
-        
     
     def mutual_information(self, X, Y):
         X = np.asarray(X)
