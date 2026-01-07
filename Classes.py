@@ -102,6 +102,7 @@ class MI_Estimator:
         dists_sq = data_sq + data_sq.T - 2 * data @ data.T
         
         sigma_scaled = self.sigma  # self.sigma * np.sqrt(d) (Scale sigma by dimension) ***********************IMP**********************
+        #sigma_scaled = self.sigma * np.sqrt(d)
         
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
