@@ -1,26 +1,58 @@
+# ============================
+# Standard Library
+# ============================
 import os
 import random
 import pickle
+import json
+import re
 from typing import List
+
+# ============================
+# Scientific & Data Handling
+# ============================
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-from matplotlib import cm
-from matplotlib.colors import Normalize
-from matplotlib.lines import Line2D
-from matplotlib.animation import FuncAnimation
-from IPython.display import HTML
 from scipy.special import digamma
 from sklearn.neighbors import NearestNeighbors
-from IPython.display import clear_output
+
+# ============================
+# PyTorch
+# ============================
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 import torchvision
 from torchvision import transforms
 
+# ============================
+# Visualization
+# ============================
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.colors import Normalize
+from matplotlib.lines import Line2D
+from matplotlib.animation import FuncAnimation
 
+# ============================
+# Jupyter / IPython
+# ============================
+from IPython.display import (
+    HTML,
+    clear_output,
+    Markdown,
+    display,
+    Image
+)
+
+# ============================
+# Progress Bars
+# ============================
+from tqdm import tqdm
+
+
+#*****************************************************************************************************************
+#*****************************************************************************************************************
 
 def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, RecorderActivat):
     model.eval()
@@ -70,6 +102,8 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, RecorderA
     
     return mi
 
+#*****************************************************************************************************************
+#*****************************************************************************************************************
 
 def LatentVAE_Info(model, dataset, device, epoch, num_samples, mi_estimator, RecorderActivat):
     model.eval()
@@ -94,7 +128,8 @@ def LatentVAE_Info(model, dataset, device, epoch, num_samples, mi_estimator, Rec
 
     return mi
 
-
+#*****************************************************************************************************************
+#*****************************************************************************************************************
 
 def plot_kde_geometry(recorder, mi_estimator, part="encoder", layer=1, neuron=None, epoch=-1, bins=60):
 
@@ -160,6 +195,8 @@ def plot_kde_geometry(recorder, mi_estimator, part="encoder", layer=1, neuron=No
     plt.show()
 
 
+#*****************************************************************************************************************
+#*****************************************************************************************************************
 
 
 def PlotInfoPlane(mi_history_encoder, mi_history_decoder, title_suffix="", suptitle="", start_epoch=1, end_epoch=-1, Step=5):
@@ -275,6 +312,9 @@ def PlotInfoPlane(mi_history_encoder, mi_history_decoder, title_suffix="", supti
    #plt.show()
 
 
+#*****************************************************************************************************************
+#*****************************************************************************************************************
+
 
 def read_MI_hist(filename):
     try:
@@ -283,7 +323,10 @@ def read_MI_hist(filename):
             return MI_histories
     except FileNotFoundError:
         print(f"Errore: {filename} non esiste")
-    
+
+
+#*****************************************************************************************************************
+#*****************************************************************************************************************
 
 def ShowSomeImages(model, testDataset, device):
 
@@ -314,6 +357,9 @@ def ShowSomeImages(model, testDataset, device):
    plt.tight_layout()
    plt.show()
 
+
+#*****************************************************************************************************************
+#*****************************************************************************************************************
 
 def AnimateActivations(epochsActivations, layer):
     
@@ -353,3 +399,58 @@ def AnimateActivations(epochsActivations, layer):
    
    # Return the HTML object
    return HTML(anim.to_jshtml())
+
+
+#*****************************************************************************************************************
+#*****************************************************************************************************************
+
+def generate_index(file="Restyle.ipynb", title="Index"):
+    with open(file, "r", encoding="utf-8") as f:
+        nb = json.load(f)
+
+    headers = []
+    for cell in nb["cells"]:
+        if cell["cell_type"] == "markdown":
+            for line in cell["source"]:
+                m = re.match(r'^(#+)\s+(.*)', line)
+                if m:
+                    level = len(m.group(1))
+                    text = m.group(2).strip()
+
+                    anchor = re.sub(r'[^a-zA-Z0-9 -]', '', text)
+                    anchor = anchor.replace(" ", "-")
+
+                    headers.append((level, text, anchor))
+
+    # HTML style
+    md = f"""
+<h1 style="color:black; font-size: 38px; font-weight: 700; margin-bottom: 5px;">
+    {title}
+</h1>
+
+<hr style="border: 1px solid #000;">
+
+<p style="font-size: 18px; color:black; margin-top: 10px;">
+
+</p>
+"""
+
+    for level, text, anchor in headers:
+        indent = "&nbsp;" * (level - 1) * 6
+        size = 20 if level == 1 else 17
+        weight = "700" if level == 1 else "500"
+        bullet = "•" if level == 1 else "◦"
+
+        md += (
+            f'{indent}<span style="font-size:{size}px; color:black; font-weight:{weight};">'
+            f'{bullet} <a href="#{anchor}" style="color:black; text-decoration:none;">{text}</a>'
+            f'</span><br>\n'
+        )
+
+    md += '<br>\n'
+    md += '<hr style="border: 1px solid #000;">\n'
+    # md += '<hr style="border: 1px solid #000;">\n'
+    md += '<br>\n'
+    # md += '<br>\n'
+
+    display(Markdown(md))

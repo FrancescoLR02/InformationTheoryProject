@@ -1,11 +1,21 @@
+# ============================
+# PyTorch
+# ============================
 import torch
 from torch import nn
-from typing import List, Callable
-import numpy as np
-import matplotlib.pyplot as plt
-import torchvision
-from torchvision import transforms
 
+# ============================
+# Typing
+# ============================
+from typing import List, Callable
+
+# ============================
+# Visualization
+# ============================
+import matplotlib.pyplot as plt
+
+#*****************************************************************************************************************
+#*****************************************************************************************************************
 
 class BinarizeWithTemperature(torch.autograd.Function):
     @staticmethod
@@ -25,6 +35,8 @@ class BinarizeWithTemperature(torch.autograd.Function):
         grad_input = grad_output * sig * (1 - sig) / temperature
         return grad_input, None
 
+#*****************************************************************************************************************
+#*****************************************************************************************************************
 
 class VariationalAutoEncoder(nn.Module):
 
