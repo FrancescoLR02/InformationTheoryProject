@@ -14,6 +14,42 @@ from typing import List, Callable
 # ============================
 import matplotlib.pyplot as plt
 
+# ============================
+# Quantization
+# ============================
+import torch.nn.utils.parametrize as parametrize
+
+#*****************************************************************************************************************
+#*****************************************************************************************************************
+
+class BitwiseWeightQuantizer(nn.Module):
+    """
+    Simulates hardware quantization using Straight-Through Estimator (STE).
+    Gradients flow through the un-quantized path during backprop.
+    """
+    def __init__(self, nBits=8):
+        super().__init__()
+        self.nBits = nBits
+        self.q_min = -(2 ** (nBits - 1))
+        self.q_max = (2 ** (nBits - 1)) - 1
+
+    def forward(self, w):
+        # 1. Scale factor based on max absolute value
+        maxVal = torch.max(w.abs().max(), torch.tensor(1e-8, device=w.device))
+        scale = maxVal / self.q_max
+        
+        # 2. Quantize (Round & Clamp)
+        wInt = torch.clamp(torch.round(w / scale), self.q_min, self.q_max)
+        
+        # 3. Dequantize (Fake Quantization for Training)
+        # We bring back int number from [ -2^(nbit-1), +2^(nbit-1) - 1 ] in float number near 0
+        w_quant = wInt * scale
+        
+        # 4. STE Magic: Forward uses w_quant, Backward uses w
+        # For problem in backward propagation round() in not differentiable
+        return w + (w_quant - w).detach()
+
+
 #*****************************************************************************************************************
 #*****************************************************************************************************************
 
@@ -49,9 +85,10 @@ class VariationalAutoEncoder(nn.Module):
         activation_enc: Callable = nn.ReLU,
         activation_dec: Callable = nn.ReLU,
         activation_out: Callable = torch.sigmoid,
-        binarize: str = "no",
+        binarize: str = "no", # if input image are binarize 0-1
         temperature: float = 1,
-        Variational: bool = True
+        Variational: bool = True,
+        quantize_bits: int = None  # for quantize weights up to nbits (see BitwiseWeightQuantizer)
     ):
         super(VariationalAutoEncoder, self).__init__()
 
@@ -69,7 +106,6 @@ class VariationalAutoEncoder(nn.Module):
 
         self.train_loss_history = []
         self.val_loss_history = []
-
 
         # Identity module for hooking input and output space
         self.InputSpace  = nn.Identity()
@@ -121,6 +157,15 @@ class VariationalAutoEncoder(nn.Module):
         self.OutputSpace = nn.Identity()
 
 
+        # ---------------- WEIGHT QUANTIZER ----------------
+        self.quantize_bits = quantize_bits
+        if self.quantize_bits is not None:
+            for name, module in self.named_modules():
+                if isinstance(module, nn.Linear):
+                    if parametrize.is_parametrized(module, "weight"):
+                        parametrize.remove_parametrizations(module, "weight")
+                    parametrize.register_parametrization(module, "weight", BitwiseWeightQuantizer(self.quantize_bits))
+
 
     def Encoding(self, x):
         x = x.view(x.size(0), -1)
@@ -132,13 +177,12 @@ class VariationalAutoEncoder(nn.Module):
             mean = self.LatentLayerMu(h)
             logVar = self.LatentLayerSigma(h)
 
-            std = torch.exp(0.5 * logVar)
+            std = torch.exp(logVar)
             eps = torch.randn_like(std) #* self.sigma
             z = mean + std * eps
 
             # Binarize latent based on mode
-            should_binarize = (self.binarize == "all") or \
-                            (self.binarize == "test" and not self.training)
+            should_binarize = (self.binarize == "all") or (self.binarize == "test" and not self.training)
             
             if should_binarize:
                 # Apply binarization with temperature-based backward
