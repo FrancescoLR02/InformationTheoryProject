@@ -18,8 +18,8 @@ from scipy.special import digamma
 
 class ActivationRecorder:
     def __init__(self):
-        self.activations = {} # Current activations
-        self.history = {}     # History: history[epoch][layer_name] -> array
+        self.activations = {}  # Current activations (last epoch)
+        self.history = {}      # History: history[epoch][layer_name] -> array
 
     def hook(self, name):
         def _hook(module, inputs, output):
@@ -50,6 +50,39 @@ class ActivationRecorder:
 
     def save_epoch(self, epoch):
         self.history[epoch] = {k: v.copy() for k, v in self.activations.items()}
+
+
+    # to get info when this class is called with print()
+    def __repr__(self):
+        last_epoch = max(self.history.keys())
+
+        return (
+            "ActivationRecorder(\n"
+            f"  activations (last epoch): { list(self.activations.keys()) }\n"
+            f"  history (activ for all epoch): {last_epoch} epochs\n"
+            f"  methods: get_epoch(epoch), get_layer(layer_name)\n"
+            ")"
+        )
+
+
+    # output: all activations (for all layers) for a specific epoch
+    def get_epoch(self, epoch):
+        if epoch not in self.history:
+            raise ValueError(f"Epoch {epoch} not found in history")
+        return self.history[epoch]
+
+
+    # output: an array (indexed by epoch) composed by the activations during training for a specific layer
+    def get_layer(self, layer_name):
+        result = []
+        for epoch in self.history.keys():
+            if layer_name in self.history[epoch]:
+                result.append(self.history[epoch][layer_name])
+            else:
+                raise ValueError(f"Layer {layer_name} not found in the model")
+
+        return result
+
 
 #*****************************************************************************************************************
 #*****************************************************************************************************************
