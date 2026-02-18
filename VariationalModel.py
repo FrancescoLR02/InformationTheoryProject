@@ -280,3 +280,22 @@ class VariationalAutoEncoder(nn.Module):
             plt.tight_layout()
             plt.show()
 
+
+
+    def __repr__(self):
+        return (
+            "VariationalAutoEncoder(\n"
+            "  modules:\n"
+            "    InputSpace, Encoder\n"
+            "    LatentLayerMu, LatentLayerSigma, LatentSpace\n"
+            "    Decoder, OutputSpace\n"
+            "  configuration:\n"
+            "    latentDim, hiddenDim, sigma, activation_out,\n"
+            "    Variational, binarize, temperature, quantize_bits\n"
+            "  training history:\n"
+            "    train_loss_history, val_loss_history,\n"
+            "    mse_history, penalty_history\n"
+            "  methods:\n"
+            "    forward(), Encoding(), Decoding(), plot_loss()\n"
+            ")"
+        )
