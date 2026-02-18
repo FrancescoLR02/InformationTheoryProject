@@ -107,6 +107,11 @@ class VariationalAutoEncoder(nn.Module):
         self.train_loss_history = []
         self.val_loss_history = []
 
+        # train_loss if there is regularizatin/penalty has two components
+        self.mse_history = []
+        self.penalty_history = []
+
+
         # Identity module for hooking input and output space
         self.InputSpace  = nn.Identity()
 
