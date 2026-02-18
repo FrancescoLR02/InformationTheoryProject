@@ -13,13 +13,22 @@ from sklearn.neighbors import NearestNeighbors
 # ============================
 from scipy.special import digamma
 
+# ============================
+# Visualization
+# ============================
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+from matplotlib.animation import FuncAnimation
+from IPython.display import HTML
+
+
 #*****************************************************************************************************************
 #*****************************************************************************************************************
 
 class ActivationRecorder:
     def __init__(self):
-        self.activations = {} # Current activations
-        self.history = {}     # History: history[epoch][layer_name] -> array
+        self.activations = {}  # Current activations (last epoch)
+        self.history = {}      # History: history[epoch][layer_name] -> array
 
     def hook(self, name):
         def _hook(module, inputs, output):
@@ -45,11 +54,84 @@ class ActivationRecorder:
         model.LatentSpace.register_forward_hook(self.hook("latent_space"))
         model.OutputSpace.register_forward_hook(self.hook("output_space"))
 
+    def save_epoch(self, epoch):
+        self.history[epoch] = {k: v.copy() for k, v in self.activations.items()}
+
+    # --------------------------------------------------------------------------------------------------------
     def get(self, name):
         return self.activations[name]
 
-    def save_epoch(self, epoch):
-        self.history[epoch] = {k: v.copy() for k, v in self.activations.items()}
+    # output: all activations (for all layers) for a specific epoch
+    def get_epoch(self, epoch):
+        if epoch not in self.history:
+            raise ValueError(f"Epoch {epoch} not found in history")
+        return self.history[epoch]
+
+    # output: an array (indexed by epoch) composed by the activations during training for a specific layer
+    def get_layer(self, layer_name):
+        result = []
+        for epoch in self.history.keys():
+            if layer_name in self.history[epoch]:
+                result.append(self.history[epoch][layer_name])
+            else:
+                raise ValueError(f"Layer {layer_name} not found in the model")
+
+        return result
+
+    # --------------------------------------------------------------------------------------------------------
+    def AnimateActivationLayers(self, layer_name):
+        """
+        Create an animation showing how the activation distribution of a specific layer
+        evolves across epochs. Uses get_layer(layer_name) to retrieve the data.
+        """
+
+        # Retrieve activations for this layer across epochs
+        layer_epochs = self.get_layer(layer_name)
+
+        # Prepare figure
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        # Compute max histogram height across all epochs (for stable y‑axis)
+        max_count = 0
+        for data in layer_epochs:
+            counts, _ = np.histogram(data, bins=100, range=(-1.1, 1.1))
+            max_count = max(max_count, counts.max())
+
+        ax.set_ylim(0, max_count * 1.1)
+
+        # Update function for animation frames
+        def update(frame):
+            ax.clear()
+
+            data = layer_epochs[frame].flatten()
+            ax.hist(data, bins=100, range=(-1.1, 1.1), alpha=0.7, edgecolor='none')
+
+            ax.set_ylim(0, max_count * 1.1)
+            ax.set_title(f"Activation Distribution – {layer_name} (Epoch {frame})", fontsize=14)
+            ax.set_xlabel("Activation Value", fontsize=12)
+            ax.set_ylabel("Count", fontsize=12)
+            ax.grid(True, alpha=0.3)
+
+        # Build animation
+        anim = FuncAnimation(fig, update, frames=len(layer_epochs), interval=200)
+
+        plt.close()
+        return HTML(anim.to_jshtml())
+
+    # --------------------------------------------------------------------------------------------------------
+    # to get info when this class is called with print()
+    def __repr__(self):
+        last_epoch = max(self.history.keys())
+
+        return (
+            "ActivationRecorder(\n"
+            f"  activations (last epoch): { list(self.activations.keys()) }\n"
+            f"  history (activ for all epoch): {last_epoch} epochs\n"
+            f"  methods: get_epoch(epoch), get_layer(layer_name)\n"
+            ")"
+        )
+
+
 
 #*****************************************************************************************************************
 #*****************************************************************************************************************
@@ -98,6 +180,18 @@ class MI_History:
                     print(f"    Layer {i+1}: I(Z, L)={mi_lat:.3f}     | I(L, Output)={mi_out:.3f}")
             
             print("-" * 50)
+        
+    def __repr__(self):
+        return (
+            "MI_History(\n"
+            "  encoder: mutual information for encoder layers\n"
+            "  decoder: mutual information for decoder layers\n"
+            "  input_latent: I(Input, Z) values\n"
+            "  latent_output: I(Z, Output) values\n"
+            "  show() available with: all, global, encoder, decoder\n"
+            ")"
+        )
+
 
 #*****************************************************************************************************************
 #*****************************************************************************************************************

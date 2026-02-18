@@ -107,6 +107,11 @@ class VariationalAutoEncoder(nn.Module):
         self.train_loss_history = []
         self.val_loss_history = []
 
+        # train_loss if there is regularizatin/penalty has two components
+        self.mse_history = []
+        self.penalty_history = []
+
+
         # Identity module for hooking input and output space
         self.InputSpace  = nn.Identity()
 
@@ -234,11 +239,12 @@ class VariationalAutoEncoder(nn.Module):
         z, mean, logVar = self.Encoding(x)
         out = self.Decoding(z)
         return out, z, mean, logVar
-    
+
 
     def plot_loss(self):
         epochs = range(1, len(self.train_loss_history) + 1)
 
+        # FIGURE 1: Training vs Validation (if present)
         plt.figure(figsize=(10, 5))
         plt.plot(epochs, self.train_loss_history, color='blue', linewidth=2, label='Training loss')
         
@@ -252,3 +258,44 @@ class VariationalAutoEncoder(nn.Module):
         plt.grid(alpha=0.3)
         plt.tight_layout()
         plt.show()
+
+        # ---------------------------------------------------
+        # FIGURE 2: Training loss compositiona MSE + penalty (if there is penalty)
+        # ---------------------------------------------------
+        if self.penalty_history:   # namely penalty_history not empty
+            plt.figure(figsize=(10, 5))
+
+            plt.plot(epochs, self.mse_history, color='green', linewidth=2, label='MSE component')
+            plt.plot(epochs, self.penalty_history, color='orange', linewidth=2, label='Penalty component')
+
+            # Total = MSE + Penalty
+            total = [m + p for m, p in zip(self.mse_history, self.penalty_history)]
+            plt.plot(epochs, total, color='purple', linewidth=2, linestyle='--', label='Total loss')
+
+            plt.xlabel("Epoch")
+            plt.ylabel("Loss components")
+            plt.title("Loss Composition: MSE vs Penalty")
+            plt.legend()
+            plt.grid(alpha=0.3)
+            plt.tight_layout()
+            plt.show()
+
+
+
+    def __repr__(self):
+        return (
+            "VariationalAutoEncoder(\n"
+            "  modules:\n"
+            "    InputSpace, Encoder\n"
+            "    LatentLayerMu, LatentLayerSigma, LatentSpace\n"
+            "    Decoder, OutputSpace\n"
+            "  configuration:\n"
+            "    latentDim, hiddenDim, sigma, activation_out,\n"
+            "    Variational, binarize, temperature, quantize_bits\n"
+            "  training history:\n"
+            "    train_loss_history, val_loss_history,\n"
+            "    mse_history, penalty_history\n"
+            "  methods:\n"
+            "    forward(), Encoding(), Decoding(), plot_loss()\n"
+            ")"
+        )
