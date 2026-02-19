@@ -286,8 +286,8 @@ def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_e
     cbar.set_ticklabels(epoch_range)
     cbar.set_label("Epoch", fontsize=14)
 
-
-
+    # --------------------------------------------------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------------------------------------
 
     # ---------------- GLOBAL: INPUT/LATENT/OUTPUT ----------------
 
@@ -380,49 +380,6 @@ def ShowSomeImages(model, testDataset, device):
 
    plt.tight_layout()
    plt.show()
-
-
-#*****************************************************************************************************************
-#*****************************************************************************************************************
-
-# def AnimateActivations(epochsActivations, layer):
-    
-#    fig, ax = plt.subplots(figsize=(8, 5))
-   
-#    max_count = 0
-#    for data in epochsActivations[f'Layer_{layer}']:
-#       counts, _ = np.histogram(data, bins=100, range=(-1.1, 1.1))
-#       if counts.max() > max_count:
-#          max_count = counts.max()
-         
-#    #ax.set_xlim(-1.2, 1.2)
-#    ax.set_ylim(0, max_count * 1.1) # Add 10% headroom
-   
-#    # Update the function (called for every frame)
-#    def update(frame):
-#       ax.clear() 
-#       # Get data for this epoch
-#       data = epochsActivations[f'Layer_{layer}'][frame]
-      
-#       # Redraw settings
-#       ax.hist(data, bins=100, range=(-1.1, 1.1), color='purple', alpha=0.7, edgecolor='none')
-      
-#       # Re-apply limits and labels (clearing wipes them)
-#       #ax.set_xlim(-1.2, 1.2)
-#       ax.set_ylim(0, max_count * 1.1)
-#       ax.set_title(f"Activation Distribution of layer {layer}: Epoch {frame}", fontsize=14)
-#       ax.set_xlabel("Activation Value (Tanh)", fontsize=12)
-#       ax.set_ylabel("Count", fontsize=12)
-#       ax.grid(True, alpha=0.3)
-
-#    # Create Animation
-#    # interval=100 means 100ms per frame (10 fps)
-#    anim = FuncAnimation(fig, update, frames=len(epochsActivations[f'Layer_{layer}']), interval=200)
-   
-#    plt.close()
-   
-#    # Return the HTML object
-#    return HTML(anim.to_jshtml())
 
 
 #*****************************************************************************************************************

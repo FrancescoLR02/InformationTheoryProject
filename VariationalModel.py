@@ -78,8 +78,7 @@ class VariationalAutoEncoder(nn.Module):
 
     def initialize_weights(self):
         """
-        Initialize all Linear layers with Xavier initialization
-        and set all biases to zero. Simple and effective.
+        Initialize all Linear layers with Xavier initialization and set all biases to zero.
         """
         for module in self.modules():
             if isinstance(module, nn.Linear):
@@ -94,9 +93,8 @@ class VariationalAutoEncoder(nn.Module):
     def __init__(
         self,
         latentDim: int,
-        hiddenDim: List[int] = [512, 256],
         inputDim: int = 784,
-        sigmaVAE: float = 0.5,
+        hiddenDim: List[int] = [512, 256],
         activation_enc: Callable = nn.ReLU,
         activation_dec: Callable = nn.ReLU,
         activation_out: Callable = torch.sigmoid,
@@ -113,7 +111,6 @@ class VariationalAutoEncoder(nn.Module):
 
         self.latentDim = latentDim
         self.hiddenDim = hiddenDim
-        self.sigma = sigmaVAE
         self.activation_out = activation_out
         self.Variational = Variational
         self.binarize = binarize
@@ -204,7 +201,7 @@ class VariationalAutoEncoder(nn.Module):
             logVar = self.LatentLayerSigma(h)
 
             std = torch.exp(logVar)
-            eps = torch.randn_like(std) #* self.sigma
+            eps = torch.randn_like(std)
             z = mean + std * eps
 
             # Binarize latent based on mode

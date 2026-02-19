@@ -79,7 +79,7 @@ class ActivationRecorder:
         return result
 
     # --------------------------------------------------------------------------------------------------------
-    def AnimateActivationLayers(self, layer_name, Debug=False):
+    def AnimateActivationLayers(self, layer_name, num_bins=100, Debug=False):
         """
         Create an animation showing how the activation distribution of a specific layer
         evolves across epochs. Uses get_layer(layer_name) to retrieve the data.
@@ -101,12 +101,10 @@ class ActivationRecorder:
         # Compute global histogram height and global min/max activation values
         # setting starting values
         max_count = 0
-        global_min = -1
+        global_min = 0
         global_max = 1
-        quantile10 = -0.8
-        quantile90 = 1.8
-
-        num_bins = 100
+        quantile10 = 0.1
+        quantile90 = 0.9
 
         for epoch, data in enumerate(layer_epochs): # data are the activations for a specific epochs
             flat = data.flatten() # data is and array of shape (num_images,num_neurons_layer), need flatten to aggregate all activations
@@ -140,7 +138,7 @@ class ActivationRecorder:
             ax.set_xlim(quantile10, quantile90)
             ax.set_ylim(0, max_count * 1.2) # extra 20% on y axis for visualization
 
-            ax.set_title(f"Activation Distribution - {layer_name} (Epoch {frame})", fontsize=14)
+            ax.set_title(f"Activation Distribution - {layer_name} (Epoch {frame+1})", fontsize=14)
             ax.set_xlabel("Activation Value", fontsize=12)
             ax.set_ylabel("Count", fontsize=12)
             ax.grid(True, alpha=0.3)
