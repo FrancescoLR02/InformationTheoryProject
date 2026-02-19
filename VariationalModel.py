@@ -164,15 +164,15 @@ class VariationalAutoEncoder(nn.Module):
             logVar = self.LatentLayerSigma(h)
 
             std = torch.exp(0.5 *logVar) # because logVar=log(σ²)=2*log(σ) ===> σ=std=exp(0.5*logVar)
-            eps = torch.randn_like(std)   # sample ε ~ N(0, 1) (same shape as std, mean=0, std=1), recall std array of length latenDim
+            eps = torch.randn_like(std)  # sample ε ~ N(0, 1) (same shape as std, mean=0, std=1), recall std array of length latenDim
             z = mean + std * eps
 
-            # Binarize latent based on mode
-            should_binarize = (self.binarize == "all") or (self.binarize == "test" and not self.training)
+            # # Binarize latent based on mode
+            # should_binarize = (self.binarize == "all") or (self.binarize == "test" and not self.training)
             
-            if should_binarize:
-                # Apply binarization with temperature-based backward
-                z = BinarizeWithTemperature.apply(z, self.temperature)
+            # if should_binarize:
+            #     # Apply binarization with temperature-based backward
+            #     z = BinarizeWithTemperature.apply(z, self.temperature)
 
             # Hook latent
             z = self.LatentSpace(z)
