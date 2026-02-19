@@ -19,36 +19,6 @@ import matplotlib.pyplot as plt
 # ============================
 import torch.nn.utils.parametrize as parametrize
 
-#*****************************************************************************************************************
-#*****************************************************************************************************************
-
-class BitwiseWeightQuantizer(nn.Module):
-    """
-    Simulates hardware quantization using Straight-Through Estimator (STE).
-    Gradients flow through the un-quantized path during backprop.
-    """
-    def __init__(self, nBits=8):
-        super().__init__()
-        self.nBits = nBits
-        self.q_min = -(2 ** (nBits - 1))
-        self.q_max = (2 ** (nBits - 1)) - 1
-
-    def forward(self, w):
-        # 1. Scale factor based on max absolute value
-        maxVal = torch.max(w.abs().max(), torch.tensor(1e-8, device=w.device))
-        scale = maxVal / self.q_max
-        
-        # 2. Quantize (Round & Clamp)
-        wInt = torch.clamp(torch.round(w / scale), self.q_min, self.q_max)
-        
-        # 3. Dequantize (Fake Quantization for Training)
-        # We bring back int number from [ -2^(nbit-1), +2^(nbit-1) - 1 ] in float number near 0
-        w_quant = wInt * scale
-        
-        # 4. STE Magic: Forward uses w_quant, Backward uses w
-        # For problem in backward propagation round() in not differentiable
-        return w + (w_quant - w).detach()
-
 
 #*****************************************************************************************************************
 #*****************************************************************************************************************
@@ -100,8 +70,7 @@ class VariationalAutoEncoder(nn.Module):
         activation_out: Callable = torch.sigmoid,
         binarize: str = "no", # if input image are binarize 0-1
         temperature: float = 1,
-        Variational: bool = True,
-        quantize_bits: int = None  # for quantize weights up to nbits (see BitwiseWeightQuantizer)
+        Variational: bool = True
     ):
         super(VariationalAutoEncoder, self).__init__()
 
@@ -111,6 +80,8 @@ class VariationalAutoEncoder(nn.Module):
 
         self.latentDim = latentDim
         self.hiddenDim = hiddenDim
+        self.activation_enc = activation_enc
+        self.activation_dec = activation_dec
         self.activation_out = activation_out
         self.Variational = Variational
         self.binarize = binarize
@@ -135,7 +106,7 @@ class VariationalAutoEncoder(nn.Module):
             modules.append(
                 nn.Sequential(
                     nn.Linear(currentDim, h),
-                    activation_enc()
+                    self.activation_enc()
                 )
             )
             currentDim = h
@@ -162,7 +133,7 @@ class VariationalAutoEncoder(nn.Module):
             modules.append(
                 nn.Sequential(
                     nn.Linear(currentDim, h),
-                    activation_dec()
+                    self.activation_dec()
                 )
             )
             currentDim = h
@@ -174,14 +145,6 @@ class VariationalAutoEncoder(nn.Module):
         self.OutputSpace = nn.Identity()
 
 
-        # ---------------- WEIGHT QUANTIZER ----------------
-        self.quantize_bits = quantize_bits
-        if self.quantize_bits is not None:
-            for name, module in self.named_modules():
-                if isinstance(module, nn.Linear):
-                    if parametrize.is_parametrized(module, "weight"):
-                        parametrize.remove_parametrizations(module, "weight")
-                    parametrize.register_parametrization(module, "weight", BitwiseWeightQuantizer(self.quantize_bits))
 
         # Initialize weights
         self.initialize_weights()
@@ -320,12 +283,14 @@ class VariationalAutoEncoder(nn.Module):
             "    LatentLayerMu, LatentLayerSigma, LatentSpace\n"
             "    Decoder, OutputSpace\n"
             "  configuration:\n"
-            "    latentDim, hiddenDim, sigma, activation_out,\n"
-            "    Variational, binarize, temperature, quantize_bits\n"
+            "    Variational, \n"
+            "    latentDim, hiddenDim,\n"
+            "    activation_enc, activation_dec, activation_out,\n"
+            "    binarize, temperature, \n"
             "  training history:\n"
             "    train_loss_history, val_loss_history,\n"
             "    mse_history, penalty_history\n"
             "  methods:\n"
-            "    forward(), Encoding(), Decoding(), plot_loss()\n"
+            "    Encoding(), Decoding(), plot_loss()\n"
             ")"
         )
