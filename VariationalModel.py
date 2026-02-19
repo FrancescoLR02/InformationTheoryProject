@@ -19,6 +19,11 @@ import matplotlib.pyplot as plt
 # ============================
 import torch.nn.utils.parametrize as parametrize
 
+# ============================
+# Scientific & Data Handling
+# ============================
+import numpy as np
+
 
 #*****************************************************************************************************************
 #*****************************************************************************************************************
@@ -183,13 +188,12 @@ class VariationalAutoEncoder(nn.Module):
         else:
             z = self.LatentLayer(h)
 
-            # Binarize latent based on mode
-            should_binarize = (self.binarize == "all") or \
-                            (self.binarize == "test" and not self.training)
+            # # Binarize latent based on mode
+            # should_binarize = (self.binarize == "all") or (self.binarize == "test" and not self.training)
             
-            if should_binarize:
-                # Apply binarization with temperature-based backward
-                z = BinarizeWithTemperature.apply(z, self.temperature)
+            # if should_binarize:
+            #     # Apply binarization with temperature-based backward
+            #     z = BinarizeWithTemperature.apply(z, self.temperature)
 
             # Hook latent
             z = self.LatentSpace(z)
@@ -267,7 +271,7 @@ class VariationalAutoEncoder(nn.Module):
 
             # Premium (if present)
             if self.premium_history:
-                plt.plot(epochs, self.premium_history, color='blue', linewidth=2, label='Premium component')
+                plt.plot(epochs, np.negative(self.premium_history), color='blue', linewidth=2, label='Premium component')
 
             plt.xlabel("Epoch")
             plt.ylabel("Loss components")
