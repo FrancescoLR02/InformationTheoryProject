@@ -107,7 +107,7 @@ class ActivationRecorder:
             ax.hist(data, bins=100, range=(-1.1, 1.1), alpha=0.7, edgecolor='none')
 
             ax.set_ylim(0, max_count * 1.1)
-            ax.set_title(f"Activation Distribution – {layer_name} (Epoch {frame})", fontsize=14)
+            ax.set_title(f"Activation Distribution - {layer_name} (Epoch {frame})", fontsize=14)
             ax.set_xlabel("Activation Value", fontsize=12)
             ax.set_ylabel("Count", fontsize=12)
             ax.grid(True, alpha=0.3)
@@ -201,8 +201,29 @@ class MI_Estimator:
         self.method = method
         self.sigma  = sigma
         self.n_neig = n_neig
+
+    def mutual_information(self, X, Y):
+        X = np.asarray(X)
+        Y = np.asarray(Y)  
+        # Reshape 1D arrays
+        if X.ndim == 1: X = X.reshape(-1, 1)
+        if Y.ndim == 1: Y = Y.reshape(-1, 1)
+
+        if self.method == "kde":
+            HX = self.entropy_kde(X)
+            HY = self.entropy_kde(Y)
+            HXY = self.entropy_kde(np.concatenate([X, Y], axis=1))
+            return HX + HY - HXY
+
+        if self.method == "kraskov":
+            return self.kraskov_estimation(X, Y)
     
     # ---------------- KDE METHOD ----------------
+
+    def entropy_kde(self, data):
+        rho = self.density(data)
+        return - float( np.mean(np.log(rho + 1e-10)) )
+
     def density(self, data):
         N, d = data.shape
         
@@ -213,10 +234,6 @@ class MI_Estimator:
         sigma_scaled = self.sigma * np.sqrt(d) 
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
-
-    def entropy_kde(self, data):
-        rho = self.density(data)
-        return -np.mean(np.log(rho + 1e-10))
 
     # ---------------- KRASKOV METHOD ---------------- # MAI TESTATO DA VEDERE!!!!!
     def kraskov_estimation(self, X, Y):
@@ -254,49 +271,3 @@ class MI_Estimator:
               np.mean(digamma(nx + 1) + digamma(ny + 1)))
               
         return max(0, mi)
-
-    #The idea is to compute:
-    #I(X;Z) = H(Z) - H(Z|X)
-    def LatentMutualInformation(self, mean, logVar):
-        N, d = mean.shape
-        eps = 1e-10
-        
-        #Calculate Conditional Entropy H(Z|X)
-        var = np.exp(logVar) + eps
-        H_ZgivenX = 0.5 * np.mean(np.sum(np.log(2 * np.pi * np.e * var), axis=1))
-        
-        # Calculate empirical variance of the means to determine bandwidth
-        data_var = np.var(mean, axis=0).mean()
-        if data_var < eps: data_var = 1.0
-        
-        # Silverman's Rule for bandwidth (h)
-        bandwidth_sq = data_var * (N ** (-2 / (d + 4))) 
-        
-        # Compute distances (squared Euclidean)
-        squareMean = np.sum(mean**2, axis=1, keepdims=True)
-        dists = squareMean + squareMean.T - 2 * mean @ mean.T
-        logKernels = -dists / (2 * bandwidth_sq)
-    
-        log_pdf_sum = np.log(np.sum(np.exp(logKernels), axis=1, keepdims=True) + eps)
-        
-        # H(Z) = -E[log q(z)]
-        normalization = 0.5 * d * np.log(2 * np.pi * bandwidth_sq) + np.log(N)
-        h_Z = -np.mean(log_pdf_sum - normalization)
-
-        return h_Z - H_ZgivenX
-    
-    def mutual_information(self, X, Y):
-        X = np.asarray(X)
-        Y = np.asarray(Y)  
-        # Reshape 1D arrays
-        if X.ndim == 1: X = X.reshape(-1, 1)
-        if Y.ndim == 1: Y = Y.reshape(-1, 1)
-
-        if self.method == "kde":
-            HX = self.entropy_kde(X)
-            HY = self.entropy_kde(Y)
-            HXY = self.entropy_kde(np.concatenate([X, Y], axis=1))
-            return HX + HY - HXY
-
-        if self.method == "kraskov":
-            return self.kraskov_estimation(X, Y)

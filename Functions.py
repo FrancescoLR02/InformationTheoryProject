@@ -59,7 +59,7 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, RecorderA
     model.to(device)
     
     # batch of data to evaluate Mutual Info
-    loader = torch.utils.data.DataLoader(dataset, batch_size=num_samples, shuffle=True)
+    loader = torch.utils.data.DataLoader(dataset, batch_size=num_samples, shuffle=False)
     inputs, _ = next(iter(loader))
     inputs = inputs.to(device)
 
@@ -100,32 +100,6 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, RecorderA
     mi["input_latent"]  = mi_estimator.mutual_information(X, Z)
     mi["latent_output"] = mi_estimator.mutual_information(Z, Y)
     
-    return mi
-
-#*****************************************************************************************************************
-#*****************************************************************************************************************
-
-def LatentVAE_Info(model, dataset, device, epoch, num_samples, mi_estimator, RecorderActivat):
-    model.eval()
-    model.to(device)
-
-    #Fix the same seed 
-    g = torch.Generator()
-    g.manual_seed(42)
-    
-    # batch of data to evaluate Mutual Info
-    loader = torch.utils.data.DataLoader(dataset, batch_size=num_samples, shuffle=True, generator=g)
-    inputs, _ = next(iter(loader))
-    inputs = inputs.to(device)
-
-    with torch.no_grad():
-        outputs, z, mean, logVar = model(inputs)
-
-    mean = mean.detach().cpu().numpy()
-    logVar = logVar.detach().cpu().numpy()
-
-    mi = mi_estimator.LatentMutualInformation(mean, logVar)
-
     return mi
 
 #*****************************************************************************************************************
