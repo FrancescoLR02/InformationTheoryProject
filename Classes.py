@@ -79,7 +79,7 @@ class ActivationRecorder:
         return result
 
     # --------------------------------------------------------------------------------------------------------
-    def AnimateActivationLayers(self, layer_name):
+    def AnimateActivationLayers(self, layer_name, Debug=False):
         """
         Create an animation showing how the activation distribution of a specific layer
         evolves across epochs. Uses get_layer(layer_name) to retrieve the data.
@@ -118,10 +118,10 @@ class ActivationRecorder:
 
             counts, bin_edges = np.histogram(flat, bins=num_bins, range=(quantile10, quantile90))
 
-            print(f"Epoch: {epoch+1} \t\t\t|\t Activations shape (images,layer size): {data.shape}")
-            print(f"Min act: {flat.min():.1f} \t\t|\t Max act: {flat.max():.1f}")
-            print(f"10% quantile act: {np.quantile(flat, 0.10):.1f} \t|\t 90% quantile act:: {np.quantile(flat, 0.90):.1f}")
-            print(counts)
+            if Debug:
+                print(f"Epoch: {epoch+1} \t\t\t|\t Activations shape (images,layer size): {data.shape} \t|\t Max hist count:{counts.max()}")
+                print(f"Min act: {flat.min():.1f} \t\t|\t Max act: {flat.max():.1f}")
+                print(f"10% quantile act: {np.quantile(flat, 0.10):.1f} \t|\t 90% quantile act: {np.quantile(flat, 0.90):.1f}")
 
             max_count = max(max_count, counts.max())
 
@@ -146,7 +146,7 @@ class ActivationRecorder:
             ax.grid(True, alpha=0.3)
 
         # Build animation
-        anim = FuncAnimation(fig, update, frames=len(layer_epochs), interval=200)
+        anim = FuncAnimation(fig, update, frames=len(layer_epochs), interval=500) #interval is just for frame/s setting
 
         plt.close()
         return HTML(anim.to_jshtml())
