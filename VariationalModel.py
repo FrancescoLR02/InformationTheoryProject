@@ -76,6 +76,21 @@ class BinarizeWithTemperature(torch.autograd.Function):
 
 class VariationalAutoEncoder(nn.Module):
 
+    def initialize_weights(self):
+        """
+        Initialize all Linear layers with Xavier initialization
+        and set all biases to zero. Simple and effective.
+        """
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+
+    #--------------------------------------------------------------------------------------------------------------------------------------
+    #--------------------CONSTRUCTOR
+    #--------------------------------------------------------------------------------------------------------------------------------------
+
     def __init__(
         self,
         latentDim: int,
@@ -171,6 +186,12 @@ class VariationalAutoEncoder(nn.Module):
                         parametrize.remove_parametrizations(module, "weight")
                     parametrize.register_parametrization(module, "weight", BitwiseWeightQuantizer(self.quantize_bits))
 
+        # Initialize weights
+        self.initialize_weights()
+
+    #--------------------------------------------------------------------------------------------------------------------------------------
+    #--------------------ENCODING
+    #--------------------------------------------------------------------------------------------------------------------------------------
 
     def Encoding(self, x):
         x = x.view(x.size(0), -1)
@@ -215,6 +236,10 @@ class VariationalAutoEncoder(nn.Module):
             return z, None, None
 
 
+    #--------------------------------------------------------------------------------------------------------------------------------------
+    #--------------------DECODING
+    #--------------------------------------------------------------------------------------------------------------------------------------
+
     def Decoding(self, z):
         y = self.Decoder(z)
         y = self.OutputLayer(y)
@@ -234,12 +259,18 @@ class VariationalAutoEncoder(nn.Module):
 
         return out
 
+    #--------------------------------------------------------------------------------------------------------------------------------------
+    #--------------------FOWARD PASS
+    #--------------------------------------------------------------------------------------------------------------------------------------
 
     def forward(self, x):
         z, mean, logVar = self.Encoding(x)
         out = self.Decoding(z)
         return out, z, mean, logVar
 
+    #--------------------------------------------------------------------------------------------------------------------------------------
+    #--------------------PLOT LOSS
+    #--------------------------------------------------------------------------------------------------------------------------------------
 
     def plot_loss(self):
         epochs = range(1, len(self.train_loss_history) + 1)
@@ -280,7 +311,9 @@ class VariationalAutoEncoder(nn.Module):
             plt.tight_layout()
             plt.show()
 
-
+    #--------------------------------------------------------------------------------------------------------------------------------------
+    #--------------------REPRESENTER (for print)
+    #--------------------------------------------------------------------------------------------------------------------------------------
 
     def __repr__(self):
         return (
