@@ -163,8 +163,8 @@ class VariationalAutoEncoder(nn.Module):
             mean = self.LatentLayerMu(h)
             logVar = self.LatentLayerSigma(h)
 
-            std = torch.exp(logVar)
-            eps = torch.randn_like(std)
+            std = torch.exp(0.5 *logVar) # because logVar=log(σ²)=2*log(σ) ===> σ=std=exp(0.5*logVar)
+            eps = torch.randn_like(std)   # sample ε ~ N(0, 1) (same shape as std, mean=0, std=1), recall std array of length latenDim
             z = mean + std * eps
 
             # Binarize latent based on mode
