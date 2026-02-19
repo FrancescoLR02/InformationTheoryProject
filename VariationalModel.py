@@ -19,36 +19,6 @@ import matplotlib.pyplot as plt
 # ============================
 import torch.nn.utils.parametrize as parametrize
 
-#*****************************************************************************************************************
-#*****************************************************************************************************************
-
-class BitwiseWeightQuantizer(nn.Module):
-    """
-    Simulates hardware quantization using Straight-Through Estimator (STE).
-    Gradients flow through the un-quantized path during backprop.
-    """
-    def __init__(self, nBits=8):
-        super().__init__()
-        self.nBits = nBits
-        self.q_min = -(2 ** (nBits - 1))
-        self.q_max = (2 ** (nBits - 1)) - 1
-
-    def forward(self, w):
-        # 1. Scale factor based on max absolute value
-        maxVal = torch.max(w.abs().max(), torch.tensor(1e-8, device=w.device))
-        scale = maxVal / self.q_max
-        
-        # 2. Quantize (Round & Clamp)
-        wInt = torch.clamp(torch.round(w / scale), self.q_min, self.q_max)
-        
-        # 3. Dequantize (Fake Quantization for Training)
-        # We bring back int number from [ -2^(nbit-1), +2^(nbit-1) - 1 ] in float number near 0
-        w_quant = wInt * scale
-        
-        # 4. STE Magic: Forward uses w_quant, Backward uses w
-        # For problem in backward propagation round() in not differentiable
-        return w + (w_quant - w).detach()
-
 
 #*****************************************************************************************************************
 #*****************************************************************************************************************
@@ -78,8 +48,7 @@ class VariationalAutoEncoder(nn.Module):
 
     def initialize_weights(self):
         """
-        Initialize all Linear layers with Xavier initialization
-        and set all biases to zero. Simple and effective.
+        Initialize all Linear layers with Xavier initialization and set all biases to zero.
         """
         for module in self.modules():
             if isinstance(module, nn.Linear):
@@ -94,16 +63,14 @@ class VariationalAutoEncoder(nn.Module):
     def __init__(
         self,
         latentDim: int,
-        hiddenDim: List[int] = [512, 256],
         inputDim: int = 784,
-        sigmaVAE: float = 0.5,
+        hiddenDim: List[int] = [512, 256],
         activation_enc: Callable = nn.ReLU,
         activation_dec: Callable = nn.ReLU,
         activation_out: Callable = torch.sigmoid,
         binarize: str = "no", # if input image are binarize 0-1
         temperature: float = 1,
-        Variational: bool = True,
-        quantize_bits: int = None  # for quantize weights up to nbits (see BitwiseWeightQuantizer)
+        Variational: bool = True
     ):
         super(VariationalAutoEncoder, self).__init__()
 
@@ -113,7 +80,8 @@ class VariationalAutoEncoder(nn.Module):
 
         self.latentDim = latentDim
         self.hiddenDim = hiddenDim
-        self.sigma = sigmaVAE
+        self.activation_enc = activation_enc
+        self.activation_dec = activation_dec
         self.activation_out = activation_out
         self.Variational = Variational
         self.binarize = binarize
@@ -138,7 +106,7 @@ class VariationalAutoEncoder(nn.Module):
             modules.append(
                 nn.Sequential(
                     nn.Linear(currentDim, h),
-                    activation_enc()
+                    self.activation_enc()
                 )
             )
             currentDim = h
@@ -165,7 +133,7 @@ class VariationalAutoEncoder(nn.Module):
             modules.append(
                 nn.Sequential(
                     nn.Linear(currentDim, h),
-                    activation_dec()
+                    self.activation_dec()
                 )
             )
             currentDim = h
@@ -177,14 +145,6 @@ class VariationalAutoEncoder(nn.Module):
         self.OutputSpace = nn.Identity()
 
 
-        # ---------------- WEIGHT QUANTIZER ----------------
-        self.quantize_bits = quantize_bits
-        if self.quantize_bits is not None:
-            for name, module in self.named_modules():
-                if isinstance(module, nn.Linear):
-                    if parametrize.is_parametrized(module, "weight"):
-                        parametrize.remove_parametrizations(module, "weight")
-                    parametrize.register_parametrization(module, "weight", BitwiseWeightQuantizer(self.quantize_bits))
 
         # Initialize weights
         self.initialize_weights()
@@ -203,8 +163,8 @@ class VariationalAutoEncoder(nn.Module):
             mean = self.LatentLayerMu(h)
             logVar = self.LatentLayerSigma(h)
 
-            std = torch.exp(logVar)
-            eps = torch.randn_like(std) #* self.sigma
+            std = torch.exp(0.5 *logVar) # because logVar=log(σ²)=2*log(σ) ===> σ=std=exp(0.5*logVar)
+            eps = torch.randn_like(std)   # sample ε ~ N(0, 1) (same shape as std, mean=0, std=1), recall std array of length latenDim
             z = mean + std * eps
 
             # Binarize latent based on mode
@@ -323,12 +283,14 @@ class VariationalAutoEncoder(nn.Module):
             "    LatentLayerMu, LatentLayerSigma, LatentSpace\n"
             "    Decoder, OutputSpace\n"
             "  configuration:\n"
-            "    latentDim, hiddenDim, sigma, activation_out,\n"
-            "    Variational, binarize, temperature, quantize_bits\n"
+            "    Variational, \n"
+            "    latentDim, hiddenDim,\n"
+            "    activation_enc, activation_dec, activation_out,\n"
+            "    binarize, temperature, \n"
             "  training history:\n"
             "    train_loss_history, val_loss_history,\n"
             "    mse_history, penalty_history\n"
             "  methods:\n"
-            "    forward(), Encoding(), Decoding(), plot_loss()\n"
+            "    Encoding(), Decoding(), plot_loss()\n"
             ")"
         )
