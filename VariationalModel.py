@@ -90,9 +90,10 @@ class VariationalAutoEncoder(nn.Module):
         self.train_loss_history = []
         self.val_loss_history = []
 
-        # train_loss if there is regularizatin/penalty has two components
+        # train_loss if there is regularizatin/penalty/premium
         self.mse_history = []
         self.penalty_history = []
+        self.premium_history = []
 
 
         # Identity module for hooking input and output space
@@ -235,7 +236,7 @@ class VariationalAutoEncoder(nn.Module):
     def plot_loss(self):
         epochs = range(1, len(self.train_loss_history) + 1)
 
-        # FIGURE 1: Training vs Validation (if present)
+        # FIGURE 1: Training vs Validation (validation if present)
         plt.figure(figsize=(10, 5))
         plt.plot(epochs, self.train_loss_history, color='blue', linewidth=2, label='Training loss')
         
@@ -250,26 +251,33 @@ class VariationalAutoEncoder(nn.Module):
         plt.tight_layout()
         plt.show()
 
-        # ---------------------------------------------------
-        # FIGURE 2: Training loss compositiona MSE + penalty (if there is penalty)
-        # ---------------------------------------------------
-        if self.penalty_history:   # namely penalty_history not empty
+
+        # FIGURE 2: Training loss composition MSE + penalty + premium
+        if self.penalty_history or self.premium_history:
             plt.figure(figsize=(10, 5))
 
-            plt.plot(epochs, self.mse_history, color='green', linewidth=2, label='MSE component')
-            plt.plot(epochs, self.penalty_history, color='orange', linewidth=2, label='Penalty component')
+            plt.plot(epochs, self.train_loss_history, color='purple', linewidth=2, linestyle='--', label='Total loss')
 
-            # Total = MSE + Penalty
-            total = [m + p for m, p in zip(self.mse_history, self.penalty_history)]
-            plt.plot(epochs, total, color='purple', linewidth=2, linestyle='--', label='Total loss')
+            # MSE
+            plt.plot(epochs, self.mse_history, color='green', linewidth=2, label='MSE component')
+
+            # Penalty (if present)
+            if self.penalty_history:
+                plt.plot(epochs, self.penalty_history, color='orange', linewidth=2, label='Penalty component')
+
+            # Premium (if present)
+            if self.premium_history:
+                plt.plot(epochs, self.premium_history, color='blue', linewidth=2, label='Premium component')
 
             plt.xlabel("Epoch")
             plt.ylabel("Loss components")
-            plt.title("Loss Composition: MSE vs Penalty")
+            plt.title("Loss Composition: MSE vs Penalty vs Premium")
             plt.legend()
             plt.grid(alpha=0.3)
             plt.tight_layout()
             plt.show()
+
+
 
     #--------------------------------------------------------------------------------------------------------------------------------------
     #--------------------REPRESENTER (for print)
