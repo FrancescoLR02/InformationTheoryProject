@@ -91,22 +91,55 @@ class ActivationRecorder:
         # Prepare figure
         fig, ax = plt.subplots(figsize=(8, 5))
 
-        # Compute max histogram height across all epochs (for stable y‑axis)
+        # # Compute max histogram height across all epochs (for stable y‑axis)
+        # max_count = 0
+        # for data in layer_epochs:
+        #     counts, _ = np.histogram(data, bins=100, range=(-1.1, 1.1))
+        #     max_count = max(max_count, counts.max())
+
+
+        # Compute global histogram height and global min/max activation values
+        # setting starting values
         max_count = 0
-        for data in layer_epochs:
-            counts, _ = np.histogram(data, bins=100, range=(-1.1, 1.1))
+        global_min = -1
+        global_max = 1
+        quantile10 = -0.8
+        quantile90 = 1.8
+
+        num_bins = 100
+
+        for epoch, data in enumerate(layer_epochs): # data are the activations for a specific epochs
+            flat = data.flatten() # data is and array of shape (num_images,num_neurons_layer), need flatten to aggregate all activations
+            global_min = min(global_min, flat.min())
+            global_max = max(global_max, flat.max())
+            quantile10 = min(quantile10, np.quantile(flat, 0.10))
+            quantile90 = max(quantile90, np.quantile(flat, 0.90))
+
+
+            counts, bin_edges = np.histogram(flat, bins=num_bins, range=(quantile10, quantile90))
+
+            print(f"Epoch: {epoch+1} \t\t\t|\t Activations shape (images,layer size): {data.shape}")
+            print(f"Min act: {flat.min():.1f} \t\t|\t Max act: {flat.max():.1f}")
+            print(f"10% quantile act: {np.quantile(flat, 0.10):.1f} \t|\t 90% quantile act:: {np.quantile(flat, 0.90):.1f}")
+            print(counts)
+
             max_count = max(max_count, counts.max())
 
-        ax.set_ylim(0, max_count * 1.1)
+
+        ax.set_xlim(quantile10, quantile90)
+        ax.set_ylim(0, max_count * 1.2) # extra 20% on y axis for visualization
+
 
         # Update function for animation frames
         def update(frame):
             ax.clear()
 
             data = layer_epochs[frame].flatten()
-            ax.hist(data, bins=100, range=(-1.1, 1.1), alpha=0.7, edgecolor='none')
+            ax.hist(data, bins=num_bins, range=(quantile10, quantile90), alpha=0.7, edgecolor='none')
 
-            ax.set_ylim(0, max_count * 1.1)
+            ax.set_xlim(quantile10, quantile90)
+            ax.set_ylim(0, max_count * 1.2) # extra 20% on y axis for visualization
+
             ax.set_title(f"Activation Distribution - {layer_name} (Epoch {frame})", fontsize=14)
             ax.set_xlabel("Activation Value", fontsize=12)
             ax.set_ylabel("Count", fontsize=12)
