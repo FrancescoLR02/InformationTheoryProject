@@ -28,27 +28,6 @@ import numpy as np
 #*****************************************************************************************************************
 #*****************************************************************************************************************
 
-class BinarizeWithTemperature(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input, temperature):
-        ctx.save_for_backward(input)
-        ctx.temperature = temperature
-        # Forward: sigmoid then hard binarization (0 or 1)
-        x_sigmoid = torch.sigmoid(input)
-        return (x_sigmoid > 0.5).float()
-    
-    @staticmethod
-    def backward(ctx, grad_output):
-        input, = ctx.saved_tensors
-        temperature = ctx.temperature
-        # Backward: gradient of sigmoid with temperature
-        sig = torch.sigmoid(input / temperature)
-        grad_input = grad_output * sig * (1 - sig) / temperature
-        return grad_input, None
-
-#*****************************************************************************************************************
-#*****************************************************************************************************************
-
 class VariationalAutoEncoder(nn.Module):
 
     def initialize_weights(self):
@@ -73,15 +52,14 @@ class VariationalAutoEncoder(nn.Module):
         activation_enc: Callable = nn.ReLU,
         activation_dec: Callable = nn.ReLU,
         activation_out: Callable = torch.sigmoid,
-        binarize: str = "no", # if input image are binarize 0-1
-        temperature: float = 1,
+        # binarize: str = "no", # if input image are binarize 0-1
         Variational: bool = True
     ):
         super(VariationalAutoEncoder, self).__init__()
 
         # Validate binarize parameter
-        if binarize not in ["no", "all", "test"]:
-            raise ValueError(f"binarize must be 'no', 'all', or 'test', got '{binarize}'")
+        # if binarize not in ["no", "all", "test"]:
+        #     raise ValueError(f"binarize must be 'no', 'all', or 'test', got '{binarize}'")
 
         self.latentDim = latentDim
         self.hiddenDim = hiddenDim
@@ -89,8 +67,7 @@ class VariationalAutoEncoder(nn.Module):
         self.activation_dec = activation_dec
         self.activation_out = activation_out
         self.Variational = Variational
-        self.binarize = binarize
-        self.temperature = temperature
+        # self.binarize = binarize
 
         self.train_loss_history = []
         self.val_loss_history = []
@@ -211,13 +188,13 @@ class VariationalAutoEncoder(nn.Module):
 
         out = self.activation_out(y)
 
-        # Binarize output based on mode
-        should_binarize = (self.binarize == "all") or \
-                        (self.binarize == "test" and not self.training)
+        # # Binarize output based on mode
+        # should_binarize = (self.binarize == "all") or \
+        #                 (self.binarize == "test" and not self.training)
         
-        if should_binarize:
-            # Apply binarization with temperature-based backward
-            out = BinarizeWithTemperature.apply(out, self.temperature)
+        # if should_binarize:
+        #     # Apply binarization with temperature-based backward
+        #     out = BinarizeWithTemperature.apply(out, self.temperature)
 
         # Hook output
         out = self.OutputSpace(out)
@@ -260,7 +237,7 @@ class VariationalAutoEncoder(nn.Module):
         if self.penalty_history or self.premium_history:
             plt.figure(figsize=(10, 5))
 
-            plt.plot(epochs, self.train_loss_history, color='purple', linewidth=2, linestyle='--', label='Total loss')
+            plt.plot(epochs, self.train_loss_history, color='blue', linewidth=2, linestyle='--', label='Total loss')
 
             # MSE
             plt.plot(epochs, self.mse_history, color='green', linewidth=2, label='MSE component')
@@ -271,7 +248,7 @@ class VariationalAutoEncoder(nn.Module):
 
             # Premium (if present)
             if self.premium_history:
-                plt.plot(epochs, np.negative(self.premium_history), color='blue', linewidth=2, label='Premium component')
+                plt.plot(epochs, self.premium_history, color='purple', linewidth=2, label='Premium component')
 
             plt.xlabel("Epoch")
             plt.ylabel("Loss components")
@@ -298,7 +275,7 @@ class VariationalAutoEncoder(nn.Module):
             "    Variational, \n"
             "    latentDim, hiddenDim,\n"
             "    activation_enc, activation_dec, activation_out,\n"
-            "    binarize, temperature, \n"
+            "    binarize, \n"
             "  training history:\n"
             "    train_loss_history, val_loss_history,\n"
             "    mse_history, penalty_history\n"
