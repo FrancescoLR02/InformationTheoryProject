@@ -27,14 +27,29 @@ from IPython.display import HTML
 #*****************************************************************************************************************
 
 class ActivationRecorder:
+
     def __init__(self):
-        self.activations = {}  # Current activations (last epoch)
-        self.history = {}      # History: history[epoch][layer_name] -> array
+        self.activations = {}     # Current activations (last epoch)
+        self.history = {}         # History: history[epoch][layer_name] -> array
+        self.is_recording = True  # switch ON/OFF to record or not during the forward pass in the model
+
+    # ----------------------------- HOOKING SYSTEM ----------------------------------------
+
+    def activate_recording(self, state: bool): # to set the recording state (ON or OFF)
+        self.is_recording = state
+
+    def hook(self, name):
+        def _hook(module, inputs, output):
+            if self.is_recording:
+                self.activations[name] = output.detach().cpu().numpy()
+        return _hook
 
     def hook(self, name):
         def _hook(module, inputs, output):
             self.activations[name] = output.detach().cpu().numpy()
         return _hook
+
+    # ----------------------------- SETTING THE REGISTER WHEN CREATED  ----------------------------------------
 
     def InitialRegister(self, model):
         self.activations = {}
@@ -61,20 +76,17 @@ class ActivationRecorder:
     def save_epoch(self, epoch):
         self.history[epoch] = {k: v.copy() for k, v in self.activations.items()}
 
-    # --------------------------------------------------------------------------------------------------------
+    # ----------------------------------GETTERS FOR ACTIVATIONS (last epoch, layer, epoch)------------------------------------------------------
+
     def get(self, name):
         return self.activations[name]
 
-    # output: all activations (for all layers) for a specific epoch
-    def get_epoch(self, epoch):
-        if epoch not in self.history:
-            raise ValueError(f"Epoch {epoch} not found in history")
-        return self.history[epoch]
-
     # output: an array (indexed by epoch) composed by the activations during training for a specific layer
     def get_layer(self, layer_name):
+        
         result = []
         for epoch in self.history.keys():
+
             if layer_name in self.history[epoch]:
                 result.append(self.history[epoch][layer_name])
             else:
@@ -82,7 +94,15 @@ class ActivationRecorder:
 
         return result
 
-    # --------------------------------------------------------------------------------------------------------
+    # output: all activations (for all layers) for a specific epoch
+    def get_epoch(self, epoch):
+
+        if epoch not in self.history:
+            raise ValueError(f"Epoch {epoch} not found in history")
+
+        return self.history[epoch]
+
+    # ----------------------------------ANIMATION FOR A LAYER---------------------------------------------------------
     def AnimateActivationLayers(self, layer_name, num_bins=100, Debug=False):
         """
         Create an animation showing how the activation distribution of a specific layer
@@ -153,8 +173,8 @@ class ActivationRecorder:
         plt.close()
         return HTML(anim.to_jshtml())
 
-    # --------------------------------------------------------------------------------------------------------
-    # to get info when this class is called with print()
+    # ---------------------------------REPRESENTARION (for print)-------------------------------------------------------
+
     def __repr__(self):
         last_epoch = max(self.history.keys())
 
@@ -171,6 +191,7 @@ class ActivationRecorder:
 #*****************************************************************************************************************
 
 class MI_History:
+
     def __init__(self):
         self.encoder = []
         self.decoder = []
@@ -254,7 +275,7 @@ class MI_Estimator:
         if self.method == "kraskov":
             return self.kraskov_estimation(X, Y)
     
-    # ---------------- KDE METHOD ----------------
+    # ------------------------- KDE METHOD -------------------------
 
     def entropy_kde(self, data):
         rho = self.density(data)
@@ -271,7 +292,7 @@ class MI_Estimator:
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
 
-    # ---------------- KRASKOV METHOD ---------------- # MAI TESTATO DA VEDERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # ------------------------- KRASKOV METHOD ------------------------- # MAI TESTATO DA VEDERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def kraskov_estimation(self, X, Y):
         # Add tiny noise to break ties (crucial for KSG)
         X = X + 1e-10 * np.random.rand(*X.shape)
