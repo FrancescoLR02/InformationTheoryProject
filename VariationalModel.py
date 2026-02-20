@@ -19,27 +19,11 @@ import matplotlib.pyplot as plt
 # ============================
 import torch.nn.utils.parametrize as parametrize
 
+# ============================
+# Scientific & Data Handling
+# ============================
+import numpy as np
 
-#*****************************************************************************************************************
-#*****************************************************************************************************************
-
-class BinarizeWithTemperature(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input, temperature):
-        ctx.save_for_backward(input)
-        ctx.temperature = temperature
-        # Forward: sigmoid then hard binarization (0 or 1)
-        x_sigmoid = torch.sigmoid(input)
-        return (x_sigmoid > 0.5).float()
-    
-    @staticmethod
-    def backward(ctx, grad_output):
-        input, = ctx.saved_tensors
-        temperature = ctx.temperature
-        # Backward: gradient of sigmoid with temperature
-        sig = torch.sigmoid(input / temperature)
-        grad_input = grad_output * sig * (1 - sig) / temperature
-        return grad_input, None
 
 #*****************************************************************************************************************
 #*****************************************************************************************************************
@@ -68,15 +52,11 @@ class VariationalAutoEncoder(nn.Module):
         activation_enc: Callable = nn.ReLU,
         activation_dec: Callable = nn.ReLU,
         activation_out: Callable = torch.sigmoid,
-        binarize: str = "no", # if input image are binarize 0-1
-        temperature: float = 1,
+        bit_type: str = "real",
         Variational: bool = True
     ):
         super(VariationalAutoEncoder, self).__init__()
 
-        # Validate binarize parameter
-        if binarize not in ["no", "all", "test"]:
-            raise ValueError(f"binarize must be 'no', 'all', or 'test', got '{binarize}'")
 
         self.latentDim = latentDim
         self.hiddenDim = hiddenDim
@@ -84,15 +64,17 @@ class VariationalAutoEncoder(nn.Module):
         self.activation_dec = activation_dec
         self.activation_out = activation_out
         self.Variational = Variational
-        self.binarize = binarize
-        self.temperature = temperature
+        self.bit_type = bit_type
+        if bit_type not in ["real", "resticted", "discrete"]:
+            raise ValueError(f"bit_type must be 'real', 'resticted', or 'discrete', you wrote '{bit_type}' not a valid choice."
 
         self.train_loss_history = []
         self.val_loss_history = []
 
-        # train_loss if there is regularizatin/penalty has two components
+        # train_loss if there is regularizatin/penalty/premium
         self.mse_history = []
         self.penalty_history = []
+        self.premium_history = []
 
 
         # Identity module for hooking input and output space
@@ -164,15 +146,8 @@ class VariationalAutoEncoder(nn.Module):
             logVar = self.LatentLayerSigma(h)
 
             std = torch.exp(0.5 *logVar) # because logVar=log(σ²)=2*log(σ) ===> σ=std=exp(0.5*logVar)
-            eps = torch.randn_like(std)   # sample ε ~ N(0, 1) (same shape as std, mean=0, std=1), recall std array of length latenDim
+            eps = torch.randn_like(std)  # sample ε ~ N(0, 1) (same shape as std, mean=0, std=1), recall std array of length latenDim
             z = mean + std * eps
-
-            # Binarize latent based on mode
-            should_binarize = (self.binarize == "all") or (self.binarize == "test" and not self.training)
-            
-            if should_binarize:
-                # Apply binarization with temperature-based backward
-                z = BinarizeWithTemperature.apply(z, self.temperature)
 
             # Hook latent
             z = self.LatentSpace(z)
@@ -181,14 +156,6 @@ class VariationalAutoEncoder(nn.Module):
             
         else:
             z = self.LatentLayer(h)
-
-            # Binarize latent based on mode
-            should_binarize = (self.binarize == "all") or \
-                            (self.binarize == "test" and not self.training)
-            
-            if should_binarize:
-                # Apply binarization with temperature-based backward
-                z = BinarizeWithTemperature.apply(z, self.temperature)
 
             # Hook latent
             z = self.LatentSpace(z)
@@ -206,13 +173,13 @@ class VariationalAutoEncoder(nn.Module):
 
         out = self.activation_out(y)
 
-        # Binarize output based on mode
-        should_binarize = (self.binarize == "all") or \
-                        (self.binarize == "test" and not self.training)
+        # # Binarize output based on mode
+        # should_binarize = (self.binarize == "all") or \
+        #                 (self.binarize == "test" and not self.training)
         
-        if should_binarize:
-            # Apply binarization with temperature-based backward
-            out = BinarizeWithTemperature.apply(out, self.temperature)
+        # if should_binarize:
+        #     # Apply binarization with temperature-based backward
+        #     out = BinarizeWithTemperature.apply(out, self.temperature)
 
         # Hook output
         out = self.OutputSpace(out)
@@ -224,9 +191,23 @@ class VariationalAutoEncoder(nn.Module):
     #--------------------------------------------------------------------------------------------------------------------------------------
 
     def forward(self, x):
+
         z, mean, logVar = self.Encoding(x)
-        out = self.Decoding(z)
-        return out, z, mean, logVar
+
+        if self.bit_type == "discrete":
+            b = (z > 0).float() # b is 0/1
+            
+            # in forward pass we get b (0/1)
+            # in backward, because of .detach() we have the gradient of z, namely the identity
+            z_post_quant = z + (b - z).detach()
+        else:
+            b = z
+            z_post_quant = z
+
+        out = self.Decoding(z_post_quant)
+
+        return out, z, b, mean, logVar
+ 
 
     #--------------------------------------------------------------------------------------------------------------------------------------
     #--------------------PLOT LOSS
@@ -235,7 +216,7 @@ class VariationalAutoEncoder(nn.Module):
     def plot_loss(self):
         epochs = range(1, len(self.train_loss_history) + 1)
 
-        # FIGURE 1: Training vs Validation (if present)
+        # FIGURE 1: Training vs Validation (validation if present)
         plt.figure(figsize=(10, 5))
         plt.plot(epochs, self.train_loss_history, color='blue', linewidth=2, label='Training loss')
         
@@ -250,26 +231,33 @@ class VariationalAutoEncoder(nn.Module):
         plt.tight_layout()
         plt.show()
 
-        # ---------------------------------------------------
-        # FIGURE 2: Training loss compositiona MSE + penalty (if there is penalty)
-        # ---------------------------------------------------
-        if self.penalty_history:   # namely penalty_history not empty
+
+        # FIGURE 2: Training loss composition MSE + penalty + premium
+        if self.penalty_history or self.premium_history:
             plt.figure(figsize=(10, 5))
 
-            plt.plot(epochs, self.mse_history, color='green', linewidth=2, label='MSE component')
-            plt.plot(epochs, self.penalty_history, color='orange', linewidth=2, label='Penalty component')
+            plt.plot(epochs, self.train_loss_history, color='blue', linewidth=2, linestyle='--', label='Total loss')
 
-            # Total = MSE + Penalty
-            total = [m + p for m, p in zip(self.mse_history, self.penalty_history)]
-            plt.plot(epochs, total, color='purple', linewidth=2, linestyle='--', label='Total loss')
+            # MSE
+            plt.plot(epochs, self.mse_history, color='green', linewidth=2, label='MSE component')
+
+            # Penalty (if present)
+            if self.penalty_history:
+                plt.plot(epochs, self.penalty_history, color='orange', linewidth=2, label='Penalty component')
+
+            # Premium (if present)
+            if self.premium_history:
+                plt.plot(epochs, self.premium_history, color='purple', linewidth=2, label='Premium component')
 
             plt.xlabel("Epoch")
             plt.ylabel("Loss components")
-            plt.title("Loss Composition: MSE vs Penalty")
+            plt.title("Loss Composition: MSE vs Penalty vs Premium")
             plt.legend()
             plt.grid(alpha=0.3)
             plt.tight_layout()
             plt.show()
+
+
 
     #--------------------------------------------------------------------------------------------------------------------------------------
     #--------------------REPRESENTER (for print)
@@ -286,7 +274,7 @@ class VariationalAutoEncoder(nn.Module):
             "    Variational, \n"
             "    latentDim, hiddenDim,\n"
             "    activation_enc, activation_dec, activation_out,\n"
-            "    binarize, temperature, \n"
+            "    binarize, \n"
             "  training history:\n"
             "    train_loss_history, val_loss_history,\n"
             "    mse_history, penalty_history\n"

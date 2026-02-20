@@ -54,10 +54,11 @@ from tqdm import tqdm
 #*****************************************************************************************************************
 #*****************************************************************************************************************
 
-def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, RecorderActivat):
+def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_history, RecorderActivat):
+
     model.eval()
     model.to(device)
-    
+
     # batch of data to evaluate Mutual Info
     loader = torch.utils.data.DataLoader(dataset, batch_size=num_samples, shuffle=False)
     inputs, _ = next(iter(loader))
@@ -100,7 +101,8 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, RecorderA
     mi["input_latent"]  = mi_estimator.mutual_information(X, Z)
     mi["latent_output"] = mi_estimator.mutual_information(Z, Y)
     
-    return mi
+    # Store the mi calculated
+    mi_history.append(mi)
 
 #*****************************************************************************************************************
 #*****************************************************************************************************************
@@ -358,25 +360,29 @@ def ShowSomeImages(model, testDataset, device):
    fig, axs = plt.subplots(5, 2, figsize=(6, 12))
 
    for i in range(5):
-      img, _ = random.choice(testDataset)
+    img, _ = random.choice(testDataset)
 
-      x = img.unsqueeze(0).to(device)
+    x = img.unsqueeze(0).to(device)
 
-      with torch.no_grad():
-         recon, _, _, _ = model(x)
+    with torch.no_grad():
+        z, _, _ = model.Encoding(x)
+        forced = 7 * torch.sign(z)
+        print(forced)
+        recon  = model.Decoding(forced)
+        #recon, _, _, _ = model(x) # from .foward() method
 
-      original = img.cpu().squeeze().numpy()
-      reconstructed = recon.cpu().squeeze().numpy().reshape(28, 28)
+    original = img.cpu().squeeze().numpy()
+    reconstructed = recon.cpu().squeeze().numpy().reshape(28, 28)
 
-      axs[i, 0].imshow(original, cmap="gist_gray")
-      axs[i, 0].set_title("Original")
-      axs[i, 0].set_xticks([])
-      axs[i, 0].set_yticks([])
+    axs[i, 0].imshow(original, cmap="gist_gray")
+    axs[i, 0].set_title("Original")
+    axs[i, 0].set_xticks([])
+    axs[i, 0].set_yticks([])
 
-      axs[i, 1].imshow(reconstructed, cmap="gist_gray")
-      axs[i, 1].set_title("Reconstruction")
-      axs[i, 1].set_xticks([])
-      axs[i, 1].set_yticks([])
+    axs[i, 1].imshow(reconstructed, cmap="gist_gray")
+    axs[i, 1].set_title("Reconstruction")
+    axs[i, 1].set_xticks([])
+    axs[i, 1].set_yticks([])
 
    plt.tight_layout()
    plt.show()
