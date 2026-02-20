@@ -23,6 +23,7 @@ from IPython.display import HTML
 
 
 #*****************************************************************************************************************
+#*******************************ACTIVATION RECORDER
 #*****************************************************************************************************************
 
 class ActivationRecorder:
@@ -52,6 +53,7 @@ class ActivationRecorder:
 
         # Register Latent and Output
         model.LatentSpace.register_forward_hook(self.hook("latent_space"))
+        model.LatentQuant.register_forward_hook(self.hook("latent_quant"))
         model.OutputSpace.register_forward_hook(self.hook("output_space"))
 
     def save_epoch(self, epoch):
@@ -165,6 +167,7 @@ class ActivationRecorder:
 
 
 #*****************************************************************************************************************
+#*******************************MI HISTORY
 #*****************************************************************************************************************
 
 class MI_History:
@@ -225,6 +228,7 @@ class MI_History:
 
 
 #*****************************************************************************************************************
+#*******************************MI ESTIMATOR
 #*****************************************************************************************************************
 
 class MI_Estimator:

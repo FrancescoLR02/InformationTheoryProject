@@ -99,12 +99,14 @@ class VariationalAutoEncoder(nn.Module):
         if self.Variational:
             self.LatentLayerMu = nn.Linear(currentDim, latentDim)
             self.LatentLayerSigma = nn.Linear(currentDim, latentDim)
-            # Identity module for hooking latent space
-            self.LatentSpace = nn.Identity()
+
         else:
             # learn latent space directly (no mean/var)
             self.LatentLayer = nn.Linear(currentDim, latentDim)
-            self.LatentSpace = nn.Identity()
+        
+        # Identity modules for hooking latent space
+        self.LatentSpace = nn.Identity()
+        self.LatentQuant= nn.Identity()
 
         # ---------------- DECODER ----------------
         modules = []
@@ -141,26 +143,36 @@ class VariationalAutoEncoder(nn.Module):
         
         h = self.Encoder(x)
 
+        mean  = None
+        logVar= None
+
         if self.Variational:
             mean = self.LatentLayerMu(h)
             logVar = self.LatentLayerSigma(h)
-
             std = torch.exp(0.5 *logVar) # because logVar=log(σ²)=2*log(σ) ===> σ=std=exp(0.5*logVar)
             eps = torch.randn_like(std)  # sample ε ~ N(0, 1) (same shape as std, mean=0, std=1), recall std array of length latenDim
             z = mean + std * eps
-
-            # Hook latent
-            z = self.LatentSpace(z)
-
-            return z, mean, logVar
             
         else:
             z = self.LatentLayer(h)
 
-            # Hook latent
-            z = self.LatentSpace(z)
+        # Hook latent (passing through identity layers)
+        z = self.LatentSpace(z)
 
-            return z, None, None
+        if self.bit_type == "discrete":
+            bit = ( 2 * (z > 0).float() ) -1       # b is -1/1
+            # bit = (z > 0).float() # here b is 0/1
+            
+            # in forward pass we get b (-1/1)
+            # in backward, because of .detach() we have the gradient of z, namely the identity
+            b = z + (bit - z).detach()
+        else:
+            b = z
+
+        # Hook latent quantize (passing through identity layers)
+        b = self.LatentQuant(b)
+
+        return z, b, mean, logVar
 
 
     #--------------------------------------------------------------------------------------------------------------------------------------
@@ -173,14 +185,6 @@ class VariationalAutoEncoder(nn.Module):
 
         out = self.activation_out(y)
 
-        # # Binarize output based on mode
-        # should_binarize = (self.binarize == "all") or \
-        #                 (self.binarize == "test" and not self.training)
-        
-        # if should_binarize:
-        #     # Apply binarization with temperature-based backward
-        #     out = BinarizeWithTemperature.apply(out, self.temperature)
-
         # Hook output
         out = self.OutputSpace(out)
 
@@ -192,19 +196,9 @@ class VariationalAutoEncoder(nn.Module):
 
     def forward(self, x):
 
-        z, mean, logVar = self.Encoding(x)
+        z, b, mean, logVar = self.Encoding(x)
 
-        if self.bit_type == "discrete":
-            b = (z > 0).float() # b is 0/1
-            
-            # in forward pass we get b (0/1)
-            # in backward, because of .detach() we have the gradient of z, namely the identity
-            z_post_quant = z + (b - z).detach()
-        else:
-            b = z
-            z_post_quant = z
-
-        out = self.Decoding(z_post_quant)
+        out = self.Decoding(b)
 
         return out, z, b, mean, logVar
  
@@ -268,13 +262,13 @@ class VariationalAutoEncoder(nn.Module):
             "VariationalAutoEncoder(\n"
             "  modules:\n"
             "    InputSpace, Encoder\n"
-            "    LatentLayerMu, LatentLayerSigma, LatentSpace\n"
+            "    LatentLayerMu, LatentLayerSigma, LatentSpace, LatentQuant\n"
             "    Decoder, OutputSpace\n"
             "  configuration:\n"
             "    Variational, \n"
             "    latentDim, hiddenDim,\n"
             "    activation_enc, activation_dec, activation_out,\n"
-            "    binarize, \n"
+            "    bit_type, \n"
             "  training history:\n"
             "    train_loss_history, val_loss_history,\n"
             "    mse_history, penalty_history\n"

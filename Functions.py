@@ -335,20 +335,6 @@ def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_e
     plt.tight_layout()
     plt.show()
 
-
-#*****************************************************************************************************************
-#*****************************************************************************************************************
-
-
-def read_MI_hist(filename):
-    try:
-        with open(filename, mode="rb") as f:
-            MI_histories = pickle.load(f)
-            return MI_histories
-    except FileNotFoundError:
-        print(f"Errore: {filename} non esiste")
-
-
 #*****************************************************************************************************************
 #*****************************************************************************************************************
 
@@ -380,7 +366,6 @@ def ShowSomeImages(model, testDataset, device):
 
    plt.tight_layout()
    plt.show()
-
 
 #*****************************************************************************************************************
 #*****************************************************************************************************************
@@ -436,3 +421,14 @@ def generate_index(file="Restyle.ipynb", title="Index"):
     # md += '<br>\n'
 
     display(Markdown(md))
+
+#*****************************************************************************************************************
+#*****************************************************************************************************************
+
+def read_MI_hist(filename):
+    try:
+        with open(filename, mode="rb") as f:
+            MI_histories = pickle.load(f)
+            return MI_histories
+    except FileNotFoundError:
+        print(f"Errore: {filename} non esiste")
