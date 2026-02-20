@@ -54,20 +54,27 @@ from tqdm import tqdm
 #*****************************************************************************************************************
 #*****************************************************************************************************************
 
+# Inside here mutual informations are calculated & mut.info and also activations are stored!
 def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_history, RecorderActivat):
+
+    # -------------------------------- SETTING --------------------------------------
 
     model.eval()
     model.to(device)
 
-    # batch of data to evaluate Mutual Info
+    # load batch of data to evaluate
     loader = torch.utils.data.DataLoader(dataset, batch_size=num_samples, shuffle=False)
-    inputs, _ = next(iter(loader))
+    inputs, label = next(iter(loader))
     inputs = inputs.to(device)
 
-    with torch.no_grad():
-        model(inputs) # Foward pass to get the activation value in RecorderActivat.activations
+    # ---------------------- CALCULATE & STORE ACTIVATIONS ----------------------------
 
-    RecorderActivat.save_epoch(epoch)
+    with torch.no_grad():
+        model(inputs, label) # Foward pass to get the activation value in RecorderActivat.activations
+
+    RecorderActivat.save_epoch(epoch) # here we stored activation!
+
+    # ------------------------ CALCULATE & STORE MUT.INFO ------------------------------
 
     X = inputs.view(inputs.size(0), -1).cpu().numpy()
     Z = RecorderActivat.get("latent_space")
@@ -338,18 +345,18 @@ def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_e
 #*****************************************************************************************************************
 #*****************************************************************************************************************
 
-def ShowSomeImages(model, testDataset, device):
+def ShowSomeImages(model, testDataset, device, howmany=5):
 
    model.eval()
-   fig, axs = plt.subplots(5, 2, figsize=(6, 12))
+   fig, axs = plt.subplots(howmany, 2, figsize=(4, howmany*2))
 
-   for i in range(5):
-    img, _ = random.choice(testDataset)
+   for i in range(howmany):
+    img, label = random.choice(testDataset)
 
     x = img.unsqueeze(0).to(device)
 
     with torch.no_grad():
-         recon, _, _, _, _ = model(x)
+         recon, _, _, _, _ = model(x, label)
 
     original = img.cpu().squeeze().numpy()
     reconstructed = recon.cpu().squeeze().numpy().reshape(28, 28)

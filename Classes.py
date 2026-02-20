@@ -42,6 +42,8 @@ class ActivationRecorder:
 
         # Register hooks for Input
         model.InputSpace.register_forward_hook(self.hook("input_space"))
+        if model.Label is not None: 
+            model.Label.register_forward_hook(self.hook("label"))
         
         # Register hooks for Encoder
         for i, layer in enumerate(model.Encoder):
@@ -164,10 +166,8 @@ class ActivationRecorder:
             ")"
         )
 
-
-
 #*****************************************************************************************************************
-#*******************************MI HISTORY
+#*******************************MI HISTORY RECORDER
 #*****************************************************************************************************************
 
 class MI_History:
@@ -228,10 +228,11 @@ class MI_History:
 
 
 #*****************************************************************************************************************
-#*******************************MI ESTIMATOR
+#*******************************MI ESTIMATOR CALCULATOR
 #*****************************************************************************************************************
 
 class MI_Estimator:
+
     def __init__(self, method, sigma=1.0, n_neig=3):
         self.method = method
         self.sigma  = sigma
@@ -270,7 +271,7 @@ class MI_Estimator:
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
 
-    # ---------------- KRASKOV METHOD ---------------- # MAI TESTATO DA VEDERE!!!!!
+    # ---------------- KRASKOV METHOD ---------------- # MAI TESTATO DA VEDERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def kraskov_estimation(self, X, Y):
         # Add tiny noise to break ties (crucial for KSG)
         X = X + 1e-10 * np.random.rand(*X.shape)

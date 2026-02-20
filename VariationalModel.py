@@ -76,9 +76,14 @@ class VariationalAutoEncoder(nn.Module):
         self.penalty_history = []
         self.premium_history = []
 
+        # Initialize weights
+        self.initialize_weights()
+
+        # ---------------- INPUT ----------------
 
         # Identity module for hooking input and output space
         self.InputSpace  = nn.Identity()
+        self.Label       = nn.Identity()
 
         # ---------------- ENCODER ----------------
         currentDim = inputDim
@@ -125,22 +130,22 @@ class VariationalAutoEncoder(nn.Module):
         self.Decoder = nn.Sequential(*modules)
         self.OutputLayer = nn.Linear(currentDim, inputDim)
 
+        # ---------------- OUTPUT ----------------
+
         # Identity module for hooking output space
         self.OutputSpace = nn.Identity()
-
-
-
-        # Initialize weights
-        self.initialize_weights()
 
     #--------------------------------------------------------------------------------------------------------------------------------------
     #--------------------ENCODING
     #--------------------------------------------------------------------------------------------------------------------------------------
 
-    def Encoding(self, x):
+    def Encoding(self, x, label=None):
+
+        if label is not None: self.Label(label)
+
         x = x.view(x.size(0), -1)
         x = self.InputSpace(x) # Hook input
-        
+
         h = self.Encoder(x)
 
         mean  = None
@@ -194,9 +199,9 @@ class VariationalAutoEncoder(nn.Module):
     #--------------------FOWARD PASS
     #--------------------------------------------------------------------------------------------------------------------------------------
 
-    def forward(self, x):
+    def forward(self, x, label=None):
 
-        z, b, mean, logVar = self.Encoding(x)
+        z, b, mean, logVar = self.Encoding(x, label)
 
         out = self.Decoding(b)
 
@@ -261,7 +266,7 @@ class VariationalAutoEncoder(nn.Module):
         return (
             "VariationalAutoEncoder(\n"
             "  modules:\n"
-            "    InputSpace, Encoder\n"
+            "    InputSpace, Label, Encoder\n"
             "    LatentLayerMu, LatentLayerSigma, LatentSpace, LatentQuant\n"
             "    Decoder, OutputSpace\n"
             "  configuration:\n"
