@@ -66,7 +66,7 @@ class VariationalAutoEncoder(nn.Module):
         self.Variational = Variational
         self.bit_type = bit_type
         if bit_type not in ["real", "resticted", "discrete"]:
-            raise ValueError(f"bit_type must be 'real', 'resticted', or 'discrete', you wrote '{bit_type}' not a valid choice."
+            raise ValueError(f"bit_type must be 'real', 'resticted', or 'discrete', you wrote '{bit_type}' not a valid choice.")
 
         self.train_loss_history = []
         self.val_loss_history = []

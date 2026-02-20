@@ -279,13 +279,13 @@ def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_e
     ax_dec.legend(dec_handles, dec_labels, framealpha=0.9, fontsize=12, title_fontsize=13)
 
     # ---------------- COLORBAR ENCODER/DECODER ----------------
-    norm = Normalize(vmin=start_epoch, vmax=end_epoch)
+    norm = Normalize(vmin=start_epoch + 1, vmax=end_epoch + 1)
     sm = cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
 
     cbar = fig.colorbar(sm, cax=ax_cb, orientation='vertical')
-    cbar.set_ticks(epoch_range)
-    cbar.set_ticklabels(epoch_range)
+    cbar.set_ticks(np.array(epoch_range)+1)
+    cbar.set_ticklabels(np.array(epoch_range)+1)
     cbar.set_label("Epoch", fontsize=14)
 
     # --------------------------------------------------------------------------------------------------------------------------
@@ -323,19 +323,17 @@ def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_e
     ax.tick_params(axis='both', labelsize=12)
 
     # --- COLORBAR GLOBAL INPUT/OUTPUT ---
-    norm = Normalize(vmin=start_epoch, vmax=end_epoch)
+    norm = Normalize(vmin=start_epoch + 1, vmax=end_epoch + 1)
     sm = cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
 
     cbar = plt.colorbar(sm, ax=ax)
     cbar.set_label("Epoch", fontsize=14)
-    cbar.set_ticks(epoch_range)
-    cbar.set_ticklabels(epoch_range)
+    cbar.set_ticks(np.array(epoch_range)+1)
+    cbar.set_ticklabels(np.array(epoch_range)+1)
 
     plt.tight_layout()
     plt.show()
-
-    #plt.show()
 
 
 #*****************************************************************************************************************
@@ -365,11 +363,7 @@ def ShowSomeImages(model, testDataset, device):
     x = img.unsqueeze(0).to(device)
 
     with torch.no_grad():
-        z, _, _ = model.Encoding(x)
-        forced = 7 * torch.sign(z)
-        print(forced)
-        recon  = model.Decoding(forced)
-        #recon, _, _, _ = model(x) # from .foward() method
+         recon, _, _, _, _ = model(x)
 
     original = img.cpu().squeeze().numpy()
     reconstructed = recon.cpu().squeeze().numpy().reshape(28, 28)
