@@ -27,14 +27,29 @@ from IPython.display import HTML
 #*****************************************************************************************************************
 
 class ActivationRecorder:
+
     def __init__(self):
-        self.activations = {}  # Current activations (last epoch)
-        self.history = {}      # History: history[epoch][layer_name] -> array
+        self.activations = {}     # Current activations (last epoch)
+        self.history = {}         # History: history[epoch][layer_name] -> array
+        self.is_recording = True  # switch ON/OFF to record or not during the forward pass in the model
+
+    # ----------------------------- HOOKING SYSTEM ----------------------------------------
+
+    def activate_recording(self, state: bool): # to set the recording state (ON or OFF)
+        self.is_recording = state
+
+    def hook(self, name):
+        def _hook(module, inputs, output):
+            if self.is_recording:
+                self.activations[name] = output.detach().cpu().numpy()
+        return _hook
 
     def hook(self, name):
         def _hook(module, inputs, output):
             self.activations[name] = output.detach().cpu().numpy()
         return _hook
+
+    # ----------------------------- SETTING THE REGISTER WHEN CREATED  ----------------------------------------
 
     def InitialRegister(self, model):
         self.activations = {}
@@ -61,20 +76,17 @@ class ActivationRecorder:
     def save_epoch(self, epoch):
         self.history[epoch] = {k: v.copy() for k, v in self.activations.items()}
 
-    # --------------------------------------------------------------------------------------------------------
+    # ----------------------------------GETTERS FOR ACTIVATIONS (last epoch, layer, epoch)------------------------------------------------------
+
     def get(self, name):
         return self.activations[name]
 
-    # output: all activations (for all layers) for a specific epoch
-    def get_epoch(self, epoch):
-        if epoch not in self.history:
-            raise ValueError(f"Epoch {epoch} not found in history")
-        return self.history[epoch]
-
     # output: an array (indexed by epoch) composed by the activations during training for a specific layer
     def get_layer(self, layer_name):
+        
         result = []
         for epoch in self.history.keys():
+
             if layer_name in self.history[epoch]:
                 result.append(self.history[epoch][layer_name])
             else:
@@ -82,7 +94,16 @@ class ActivationRecorder:
 
         return result
 
-    # --------------------------------------------------------------------------------------------------------
+    # output: all activations (for all layers) for a specific epoch
+    def get_epoch(self, epoch):
+
+        if epoch not in self.history:
+            raise ValueError(f"Epoch {epoch} not found in history")
+
+        return self.history[epoch]
+
+    # ----------------------------------ANIMATION FOR A LAYER---------------------------------------------------------
+
     def AnimateActivationLayers(self, layer_name, num_bins=100, Debug=False):
         """
         Create an animation showing how the activation distribution of a specific layer
@@ -153,8 +174,88 @@ class ActivationRecorder:
         plt.close()
         return HTML(anim.to_jshtml())
 
-    # --------------------------------------------------------------------------------------------------------
-    # to get info when this class is called with print()
+    # ----------------------------------  PLOT DISTANCES BETWEEN NEURONS/IN LAYERS ---------------------------------------------------------
+
+    def plot_activations(self, part="encoder", layer=1, neuron=None, how_many_epoch=5, bins=60):
+
+        # ------------------------------ CHECK EPOCHS AVAILABLE ----------------------------
+        available_epochs = sorted([ep for ep in self.history.keys() if ep != 1]) # exclude the first epoch (always problematic)
+
+        total_epochs = len(available_epochs)
+
+        if total_epochs < how_many_epoch:
+            raise ValueError(f"Requested {how_many_epoch} epochs but only {total_epochs} available.")
+
+        # Always include first and last epoch
+        if how_many_epoch == 2:
+            selected_epochs = [available_epochs[0], available_epochs[-1]]
+        else:
+            # Compute equidistant indices
+            idxs = np.linspace(0, total_epochs - 1, how_many_epoch, dtype=int)
+            selected_epochs = [available_epochs[i] for i in idxs]
+
+        # ------------------------------ BUILD THE KEY ----------------------------
+        if part == "encoder":
+            key = f"encoder_layer_{layer}"
+        elif part == "decoder":
+            key = f"decoder_layer_{layer}"
+        elif part == "latent":
+            key = "latent_space"
+        elif part == "output":
+            key = "output_space"
+        else:
+            raise ValueError("Part must be 'encoder', 'decoder', 'latent', or 'output'")
+
+        # ------------------------------ PREPARE PLOT ----------------------------
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        cmap = plt.get_cmap("viridis")
+        colors = [cmap(i / max(1, how_many_epoch - 1)) for i in range(how_many_epoch)]
+
+        # ------------------------------ LOOP OVER SELECTED EPOCHS ----------------------------
+        for idx, ep in enumerate(selected_epochs):
+
+            data_dict = self.history[ep]
+            if key not in data_dict:
+                raise ValueError(f"Key {key} not found in epoch {ep}")
+
+            X = data_dict[key]
+
+            # If a specific neuron is selected
+            if neuron is not None:
+                X = X[:, neuron:neuron+1]
+
+            # ------------------------------ DISTANCES ----------------------------
+            X_sq = np.sum(X**2, axis=1, keepdims=True)
+            dists_sq = X_sq + X_sq.T - 2 * X @ X.T
+            dists = np.sqrt(np.maximum(dists_sq, 0))
+            tri_idx = np.triu_indices_from(dists, k=1)
+            D = dists[tri_idx]
+
+            # ------------------------------ PLOT ----------------------------
+            ax.hist(D, bins=bins, density=True, alpha=0.5,
+                    color=colors[idx], edgecolor='black',
+                    label=f"Epoch {ep}")
+
+        # ------------------------------ TITLES & LABELS ----------------------------
+        title_str = f"{part.upper()}: "
+        if part in ["encoder", "decoder"]:
+            title_str += f"L{layer}"
+        if neuron is not None:
+            title_str += f"-N{neuron}"
+
+        ax.set_title(f"{title_str} — {how_many_epoch} epochs", fontsize=14)
+        ax.set_xlabel("Pairwise Distance", fontsize=12)
+        ax.set_ylabel("Density", fontsize=12)
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+
+        plt.tight_layout()
+        plt.show()
+
+
+    # ---------------------------------REPRESENTARION (for print)-------------------------------------------------------
+
     def __repr__(self):
         last_epoch = max(self.history.keys())
 
@@ -171,6 +272,7 @@ class ActivationRecorder:
 #*****************************************************************************************************************
 
 class MI_History:
+
     def __init__(self):
         self.encoder = []
         self.decoder = []
@@ -254,7 +356,7 @@ class MI_Estimator:
         if self.method == "kraskov":
             return self.kraskov_estimation(X, Y)
     
-    # ---------------- KDE METHOD ----------------
+    # ------------------------- KDE METHOD -------------------------
 
     def entropy_kde(self, data):
         rho = self.density(data)
@@ -271,7 +373,7 @@ class MI_Estimator:
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
 
-    # ---------------- KRASKOV METHOD ---------------- # MAI TESTATO DA VEDERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # ------------------------- KRASKOV METHOD ------------------------- # MAI TESTATO DA VEDERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def kraskov_estimation(self, X, Y):
         # Add tiny noise to break ties (crucial for KSG)
         X = X + 1e-10 * np.random.rand(*X.shape)
