@@ -244,7 +244,7 @@ class ActivationRecorder:
         if neuron is not None:
             title_str += f"-N{neuron}"
 
-        ax.set_title(f"{title_str} — {how_many_epoch} epochs", fontsize=14)
+        ax.set_title(f"{title_str}", fontsize=14)
         ax.set_xlabel("Pairwise Distance", fontsize=12)
         ax.set_ylabel("Density", fontsize=12)
         ax.grid(True, alpha=0.3)
