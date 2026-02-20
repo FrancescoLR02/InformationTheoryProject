@@ -52,14 +52,11 @@ class VariationalAutoEncoder(nn.Module):
         activation_enc: Callable = nn.ReLU,
         activation_dec: Callable = nn.ReLU,
         activation_out: Callable = torch.sigmoid,
-        # binarize: str = "no", # if input image are binarize 0-1
+        bit_type: str = "real",
         Variational: bool = True
     ):
         super(VariationalAutoEncoder, self).__init__()
 
-        # Validate binarize parameter
-        # if binarize not in ["no", "all", "test"]:
-        #     raise ValueError(f"binarize must be 'no', 'all', or 'test', got '{binarize}'")
 
         self.latentDim = latentDim
         self.hiddenDim = hiddenDim
@@ -67,7 +64,9 @@ class VariationalAutoEncoder(nn.Module):
         self.activation_dec = activation_dec
         self.activation_out = activation_out
         self.Variational = Variational
-        # self.binarize = binarize
+        self.bit_type = bit_type
+        if bit_type not in ["real", "resticted", "discrete"]:
+            raise ValueError(f"bit_type must be 'real', 'resticted', or 'discrete', you wrote '{bit_type}' not a valid choice."
 
         self.train_loss_history = []
         self.val_loss_history = []
@@ -150,13 +149,6 @@ class VariationalAutoEncoder(nn.Module):
             eps = torch.randn_like(std)  # sample ε ~ N(0, 1) (same shape as std, mean=0, std=1), recall std array of length latenDim
             z = mean + std * eps
 
-            # # Binarize latent based on mode
-            # should_binarize = (self.binarize == "all") or (self.binarize == "test" and not self.training)
-            
-            # if should_binarize:
-            #     # Apply binarization with temperature-based backward
-            #     z = BinarizeWithTemperature.apply(z, self.temperature)
-
             # Hook latent
             z = self.LatentSpace(z)
 
@@ -164,13 +156,6 @@ class VariationalAutoEncoder(nn.Module):
             
         else:
             z = self.LatentLayer(h)
-
-            # # Binarize latent based on mode
-            # should_binarize = (self.binarize == "all") or (self.binarize == "test" and not self.training)
-            
-            # if should_binarize:
-            #     # Apply binarization with temperature-based backward
-            #     z = BinarizeWithTemperature.apply(z, self.temperature)
 
             # Hook latent
             z = self.LatentSpace(z)
@@ -206,9 +191,23 @@ class VariationalAutoEncoder(nn.Module):
     #--------------------------------------------------------------------------------------------------------------------------------------
 
     def forward(self, x):
+
         z, mean, logVar = self.Encoding(x)
-        out = self.Decoding(z)
-        return out, z, mean, logVar
+
+        if self.bit_type == "discrete":
+            b = (z > 0).float() # b is 0/1
+            
+            # in forward pass we get b (0/1)
+            # in backward, because of .detach() we have the gradient of z, namely the identity
+            z_post_quant = z + (b - z).detach()
+        else:
+            b = z
+            z_post_quant = z
+
+        out = self.Decoding(z_post_quant)
+
+        return out, z, b, mean, logVar
+ 
 
     #--------------------------------------------------------------------------------------------------------------------------------------
     #--------------------PLOT LOSS
