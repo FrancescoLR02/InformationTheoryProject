@@ -23,6 +23,7 @@ from IPython.display import HTML
 
 
 #*****************************************************************************************************************
+#*******************************ACTIVATION RECORDER
 #*****************************************************************************************************************
 
 class ActivationRecorder:
@@ -41,6 +42,8 @@ class ActivationRecorder:
 
         # Register hooks for Input
         model.InputSpace.register_forward_hook(self.hook("input_space"))
+        if model.Label is not None: 
+            model.Label.register_forward_hook(self.hook("label"))
         
         # Register hooks for Encoder
         for i, layer in enumerate(model.Encoder):
@@ -52,6 +55,7 @@ class ActivationRecorder:
 
         # Register Latent and Output
         model.LatentSpace.register_forward_hook(self.hook("latent_space"))
+        model.LatentQuant.register_forward_hook(self.hook("latent_quant"))
         model.OutputSpace.register_forward_hook(self.hook("output_space"))
 
     def save_epoch(self, epoch):
@@ -162,9 +166,8 @@ class ActivationRecorder:
             ")"
         )
 
-
-
 #*****************************************************************************************************************
+#*******************************MI HISTORY RECORDER
 #*****************************************************************************************************************
 
 class MI_History:
@@ -225,9 +228,11 @@ class MI_History:
 
 
 #*****************************************************************************************************************
+#*******************************MI ESTIMATOR CALCULATOR
 #*****************************************************************************************************************
 
 class MI_Estimator:
+
     def __init__(self, method, sigma=1.0, n_neig=3):
         self.method = method
         self.sigma  = sigma
@@ -266,7 +271,7 @@ class MI_Estimator:
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
 
-    # ---------------- KRASKOV METHOD ---------------- # MAI TESTATO DA VEDERE!!!!!
+    # ---------------- KRASKOV METHOD ---------------- # MAI TESTATO DA VEDERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     def kraskov_estimation(self, X, Y):
         # Add tiny noise to break ties (crucial for KSG)
         X = X + 1e-10 * np.random.rand(*X.shape)
