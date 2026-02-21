@@ -240,7 +240,7 @@ class ActivationRecorder:
         if part in ["encoder", "decoder"]:
             title_str += f"L{layer}"
         if neuron is not None:
-            title_str += f"-N{neuron}"
+            title_str += f"- N{neuron}"
 
         ax.set_title(f"{title_str}", fontsize=14)
         ax.set_xlabel("Pairwise Distance", fontsize=12)
