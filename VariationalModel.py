@@ -46,7 +46,7 @@ class VariationalAutoEncoder(nn.Module):
 
     def __init__(
         self,
-        latentDim: int,
+        latentDim: int = 50,
         inputDim: int = 784,
         hiddenDim: List[int] = [512, 256],
         activation_enc: Callable = nn.ReLU,

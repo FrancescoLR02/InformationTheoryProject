@@ -179,7 +179,7 @@ class ActivationRecorder:
     def plot_activations(self, part="encoder", layer=1, neuron=None, how_many_epoch=5, bins=60):
 
         # ------------------------------ CHECK EPOCHS AVAILABLE ----------------------------
-        available_epochs = sorted([ep for ep in self.history.keys() if ep != 1]) # exclude the first epoch (always problematic)
+        available_epochs = sorted([ep for ep in self.history.keys() if ep != 1]) # exclude the first epoch which is always problematic
 
         total_epochs = len(available_epochs)
 
