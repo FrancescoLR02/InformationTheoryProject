@@ -102,6 +102,115 @@ class ActivationRecorder:
 
         return self.history[epoch]
 
+    # ----------------------------------SELECT MAIN LAYERS BY LABEL------------------------------------------------------
+
+    def select_by_label(self, target_label):
+
+        # Extract labels
+        labels = self.activations["label"]  # shape (N,)
+
+        # Boolean mask
+        mask = (labels == target_label)
+
+        # Indices of matching samples
+        idx = np.where(mask)[0]
+
+        # Layers to extract
+        layers_of_interest = ["input_space", "latent_quant", "output_space"]
+
+        # Output dictionary
+        selected = {"idx": idx}
+
+        # Filter labels too
+        selected["label"] = labels[idx]
+
+        # Filter each layer
+        for layer in layers_of_interest:
+            if layer not in self.activations:
+                raise ValueError(f"Layer '{layer}' not found in activations")
+            selected[layer] = self.activations[layer][idx]
+
+        return selected
+
+    # ----------------------------------PLOT LATENT BIT FREQUENCY BY LABEL------------------------------------------------------
+
+    def plot_bit_freq(self, labels=None):
+
+        # Normalize input
+        if labels is None:
+            labels = list(range(10))
+        elif isinstance(labels, int):
+            labels = [labels]
+
+        # Determine latent dimension from any label
+        sample = self.select_by_label(labels[0])
+        latentDim = sample["latent_quant"].shape[1]
+
+        # Decide how many neurons per subplot
+        neurons_per_plot = 40
+        num_plots = int(np.ceil(latentDim / neurons_per_plot))
+
+        # Color map for different labels
+        cmap = plt.get_cmap("tab10")
+        label_colors = {lab: cmap(i % 10) for i, lab in enumerate(labels)}
+
+        # Prepare figure
+        fig, axes = plt.subplots(len(labels), num_plots,
+                                 figsize=(num_plots * 9, len(labels) * 4),
+                                 squeeze=False)
+
+        fig.suptitle("Bit=1 frequency per latent neuron", fontsize=26, weight="bold", y=0.995)
+
+        # Iterate over labels
+        for row, digit in enumerate(labels):
+
+            selected = self.select_by_label(digit)
+            latent = selected["latent_quant"]
+
+            # Boolean mask: True where bit == 1
+            bit_is_one = (latent == 1)
+
+            # Frequency of bit=1 per neuron
+            freq = bit_is_one.mean(axis=0)
+
+            # Plot across multiple subplots if needed
+            for p in range(num_plots):
+                start = p * neurons_per_plot
+                end = min((p + 1) * neurons_per_plot, latentDim)
+
+                ax = axes[row, p]
+
+                ax.bar(np.arange(start, end), freq[start:end],
+                       color=label_colors[digit], edgecolor="black")
+
+                ax.set_ylim(0, 1)
+                ax.grid(axis="y", alpha=0.3)
+
+                # Larger ticks and labels
+                ax.tick_params(axis='both', labelsize=12)
+
+                # Axis labels
+                ax.set_xlabel("Neuron index", fontsize=14)
+                if p == 0:
+                    ax.set_ylabel("Fraction bit = 1", fontsize=14)
+
+                # Title for each subplot
+                ax.set_title(f"Neurons {start}–{end-1}", fontsize=14, pad=10)
+
+            # Add a centered label title UNDER the row
+            fig.text(0.5,
+                     1 - ((row + 1) / len(labels)) + 0.01,
+                     f"Label {digit}",
+                     ha="center",
+                     va="center",
+                     fontsize=20,
+                     weight="bold",
+                     color=label_colors[digit])
+
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        plt.show()
+
+
     # ----------------------------------ANIMATION FOR A LAYER---------------------------------------------------------
 
     def AnimateActivationLayers(self, layer_name, num_bins=100, Debug=False):
@@ -176,10 +285,10 @@ class ActivationRecorder:
 
     # ----------------------------------  PLOT DISTANCES BETWEEN NEURONS/IN LAYERS ---------------------------------------------------------
 
-    def plot_activations(self, part="encoder", layer=1, neuron=None, how_many_epoch=5, bins=60):
+    def plot_activ_distances(self, part="encoder", layer=1, neuron=None, how_many_epoch=5, bins=60):
 
-        # ------------------------------ CHECK EPOCHS AVAILABLE ----------------------------
-        available_epochs = sorted([ep for ep in self.history.keys() if ep != 1]) # exclude the first epoch (always problematic)
+        # _____________________ CHECK EPOCHS AVAILABLE ________________________
+        available_epochs = sorted([ep for ep in self.history.keys() if ep != 1]) # exclude the first epoch which is always problematic
 
         total_epochs = len(available_epochs)
 
@@ -194,7 +303,7 @@ class ActivationRecorder:
             idxs = np.linspace(0, total_epochs - 1, how_many_epoch, dtype=int)
             selected_epochs = [available_epochs[i] for i in idxs]
 
-        # ------------------------------ BUILD THE KEY ----------------------------
+        # ______________________________ BUILD THE KEY ____________________________
         if part == "encoder":
             key = f"encoder_layer_{layer}"
         elif part == "decoder":
@@ -206,13 +315,13 @@ class ActivationRecorder:
         else:
             raise ValueError("Part must be 'encoder', 'decoder', 'latent', or 'output'")
 
-        # ------------------------------ PREPARE PLOT ----------------------------
+        # _____________________________ PREPARE PLOT ___________________________
         fig, ax = plt.subplots(figsize=(8, 5))
 
         cmap = plt.get_cmap("viridis")
         colors = [cmap(i / max(1, how_many_epoch - 1)) for i in range(how_many_epoch)]
 
-        # ------------------------------ LOOP OVER SELECTED EPOCHS ----------------------------
+        # ________________________ LOOP OVER SELECTED EPOCHS __________________________
         for idx, ep in enumerate(selected_epochs):
 
             data_dict = self.history[ep]
@@ -225,24 +334,22 @@ class ActivationRecorder:
             if neuron is not None:
                 X = X[:, neuron:neuron+1]
 
-            # ------------------------------ DISTANCES ----------------------------
+            # ____________________________ DISTANCES ____________________________
             X_sq = np.sum(X**2, axis=1, keepdims=True)
             dists_sq = X_sq + X_sq.T - 2 * X @ X.T
             dists = np.sqrt(np.maximum(dists_sq, 0))
             tri_idx = np.triu_indices_from(dists, k=1)
             D = dists[tri_idx]
 
-            # ------------------------------ PLOT ----------------------------
-            ax.hist(D, bins=bins, density=True, alpha=0.5,
-                    color=colors[idx], edgecolor='black',
-                    label=f"Epoch {ep}")
+            # _____________________________ PLOT ___________________________
+            ax.hist(D, bins=bins, density=True, alpha=0.5, color=colors[idx], edgecolor='black', label=f"Epoch {ep}")
 
-        # ------------------------------ TITLES & LABELS ----------------------------
+        # __________________________ TITLES & LABELS ___________________________
         title_str = f"{part.upper()}: "
         if part in ["encoder", "decoder"]:
             title_str += f"L{layer}"
         if neuron is not None:
-            title_str += f"-N{neuron}"
+            title_str += f"- N{neuron}"
 
         ax.set_title(f"{title_str}", fontsize=14)
         ax.set_xlabel("Pairwise Distance", fontsize=12)
@@ -252,6 +359,43 @@ class ActivationRecorder:
 
         plt.tight_layout()
         plt.show()
+
+    
+    def plot_error(self):
+
+        if len(self.history) == 0:
+            raise ValueError("No history found. Did you call save_epoch during training?")
+
+        epochs = sorted(self.history.keys())
+        mse_values = []
+
+        for ep in epochs:
+            data = self.history[ep]
+
+            if "input_space" not in data or "output_space" not in data:
+                raise ValueError(f"Missing input/output activations at epoch {ep}")
+
+            inp = data["input_space"]      # shape (N, D)
+            out = data["output_space"]     # shape (N, D)
+
+            # Vectorized MSE over all samples and all pixels
+            mse = np.mean((inp - out) ** 2)
+            mse_values.append(mse)
+
+        # Plot
+        plt.figure(figsize=(10, 5))
+        plt.plot(epochs, mse_values, marker='o', linewidth=2, color="steelblue")
+        plt.xlabel("Epoch", fontsize=14)
+        plt.ylabel("Reconstruction MSE", fontsize=14)
+        plt.title("Reconstruction Error per Epoch", fontsize=18, weight="bold")
+        plt.grid(alpha=0.3)
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        plt.show()
+
+        return epochs, mse_values
+
 
 
     # ---------------------------------REPRESENTARION (for print)-------------------------------------------------------
