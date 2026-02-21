@@ -176,7 +176,7 @@ class ActivationRecorder:
 
     # ----------------------------------  PLOT DISTANCES BETWEEN NEURONS/IN LAYERS ---------------------------------------------------------
 
-    def plot_activations(self, part="encoder", layer=1, neuron=None, how_many_epoch=5, bins=60):
+    def plot_activ_distances(self, part="encoder", layer=1, neuron=None, how_many_epoch=5, bins=60):
 
         # ------------------------------ CHECK EPOCHS AVAILABLE ----------------------------
         available_epochs = sorted([ep for ep in self.history.keys() if ep != 1]) # exclude the first epoch which is always problematic
@@ -233,9 +233,7 @@ class ActivationRecorder:
             D = dists[tri_idx]
 
             # ------------------------------ PLOT ----------------------------
-            ax.hist(D, bins=bins, density=True, alpha=0.5,
-                    color=colors[idx], edgecolor='black',
-                    label=f"Epoch {ep}")
+            ax.hist(D, bins=bins, density=True, alpha=0.5, color=colors[idx], edgecolor='black', label=f"Epoch {ep}")
 
         # ------------------------------ TITLES & LABELS ----------------------------
         title_str = f"{part.upper()}: "
