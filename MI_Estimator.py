@@ -28,26 +28,49 @@ from IPython.display import HTML
 
 class MI_Estimator:
 
-    def __init__(self, method, sigma=1.0, n_neig=3):
-        self.method = method
+
+    def __init__(self, method, sigma=1.0, n_neig=3, default="kde"):
         self.sigma  = sigma
         self.n_neig = n_neig
+        self.method = self.create_method_array(method, default)
+        # for mi methods self.method = ["in_h", "h_z" ,"in_z", "z_h", "h_out", "z_out"]
 
-    def mutual_information(self, X, Y):
+    def create_method_array(self, method, default):
+        # if only a string is passed it is replicated 6 times
+        if isinstance(method, str):
+            method_array = [method] * 6
+            return method_array
+        
+        # if a list of string is passed we fill it to 6 methods with the default type
+        if isinstance(method, (list, tuple)):
+            method_array = list(method) # convert tuple eventually into list
+
+            while len(method_array) < 6:
+                method_array.append(default)
+            return method_array[:6] # always a list of 6 strings is returned
+
+
+
+    # ------------------------- MUTUAL INFO -------------------------
+
+    def mutual_information(self, X, Y, method_layer):
         X = np.asarray(X)
         Y = np.asarray(Y)  
         # Reshape 1D arrays
         if X.ndim == 1: X = X.reshape(-1, 1)
         if Y.ndim == 1: Y = Y.reshape(-1, 1)
 
-        if self.method == "kde":
+        if method_layer == "kde":
             HX = self.entropy_kde(X)
             HY = self.entropy_kde(Y)
             HXY = self.entropy_kde(np.concatenate([X, Y], axis=1))
             return HX + HY - HXY
 
-        if self.method == "kraskov":
-            return self.kraskov_estimation(X, Y)
+        if method_layer == "kraskov":
+            return self.entropy_kraskov(X, Y)
+
+        if method_layer == "vae":
+            return self.entropy_vae(X, Y)
     
     # ------------------------- KDE METHOD -------------------------
 
@@ -67,7 +90,7 @@ class MI_Estimator:
         return np.mean(kernel, axis=1)
 
     # ------------------------- KRASKOV METHOD ------------------------- # MAI TESTATO DA VEDERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    def kraskov_estimation(self, X, Y):
+    def entropy_kraskov(self, X, Y):
         # Add tiny noise to break ties (crucial for KSG)
         X = X + 1e-10 * np.random.rand(*X.shape)
         Y = Y + 1e-10 * np.random.rand(*Y.shape)
