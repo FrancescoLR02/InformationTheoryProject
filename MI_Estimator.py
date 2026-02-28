@@ -27,7 +27,7 @@ from IPython.display import HTML
 #*****************************************************************************************************************
 
 class MI_Estimator:
-    
+
 
     def __init__(self, method, sigma=1.0, n_neig=3, default="kde"):
         self.sigma  = sigma
@@ -68,6 +68,10 @@ class MI_Estimator:
 
         if method_layer == "kraskov":
             return self.kraskov_estimation(X, Y)
+
+        if method_layer == "prova":
+            print("prova")
+            return 1
     
     # ------------------------- KDE METHOD -------------------------
 
