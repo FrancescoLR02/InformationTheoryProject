@@ -34,6 +34,7 @@ class MI_Estimator:
         self.n_neig = n_neig
         self.method = self.create_method_array(method, default)
         # for mi methods self.method = ["in_h", "h_z" ,"in_z", "z_h", "h_out", "z_out"]
+        print(self.method)
 
     def create_method_array(self, method, default):
         # if only a string is passed it is replicated 6 times
