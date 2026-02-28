@@ -71,14 +71,20 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
     # ---------------------- CALCULATE & STORE ACTIVATIONS ----------------------------
 
     with torch.no_grad():
-        model(inputs, label) # Foward pass to get the activation value in RecorderActivat.activations
+         x_hat, z, b, mean, logVar = model(inputs, label) # Foward pass to get the activation value in RecorderActivat.activations
+
+    #print(b)
+    #print(b.shape)
 
     RecorderActivat.save_epoch(epoch) # here we stored activation!
 
     # ------------------------ CALCULATE & STORE MUT.INFO ------------------------------
 
     X = inputs.view(inputs.size(0), -1).cpu().numpy()
-    Z = RecorderActivat.get("latent_space")
+    Z = RecorderActivat.get("latent_quant") # fixing here it was "latent_space" before introducing quantize latent
+    # ACTHUNG
+    #print(Z)
+    #print(Z.shape)
     Y = RecorderActivat.get("output_space")
         
     mi = {
@@ -106,7 +112,7 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
             mi_estimator.mutual_information(X, h, method_in_h), # I(Input, Layer)
             mi_estimator.mutual_information(h, Z, method_h_z)  # I(Layer, Latent)
         ))
-        print("x_h  h_z")
+        #print("x_h  h_z")
 
     # Decoder Layers
     for i in range(len(model.Decoder)):
@@ -116,11 +122,11 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
             mi_estimator.mutual_information(Z, h, method_z_h), # I(Latent, Layer)
             mi_estimator.mutual_information(h, Y, method_h_out)  # I(Layer, Output)
         ))
-        print("z_h  h_y")
+        #print("z_h  h_y")
 
     mi["input_latent"]  = mi_estimator.mutual_information(X, Z, method_in_z)  # I(Input, Latent)
     mi["latent_output"] = mi_estimator.mutual_information(Z, Y, method_z_out) # I(Latent, Output)
-    print("x_z  z_y")
+    #print("x_z  z_y")
     
     # Store the mi calculated
     mi_history.append(mi)

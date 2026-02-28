@@ -34,7 +34,6 @@ class MI_Estimator:
         self.n_neig = n_neig
         self.method = self.create_method_array(method, default)
         # for mi methods self.method = ["in_h", "h_z" ,"in_z", "z_h", "h_out", "z_out"]
-        print(self.method)
 
     def create_method_array(self, method, default):
         # if only a string is passed it is replicated 6 times
@@ -68,11 +67,10 @@ class MI_Estimator:
             return HX + HY - HXY
 
         if method_layer == "kraskov":
-            return self.kraskov_estimation(X, Y)
+            return self.entropy_kraskov(X, Y)
 
-        if method_layer == "prova":
-            print("prova")
-            return 1
+        if method_layer == "vae":
+            return self.entropy_vae(X, Y)
     
     # ------------------------- KDE METHOD -------------------------
 
@@ -92,7 +90,7 @@ class MI_Estimator:
         return np.mean(kernel, axis=1)
 
     # ------------------------- KRASKOV METHOD ------------------------- # MAI TESTATO DA VEDERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    def kraskov_estimation(self, X, Y):
+    def entropy_kraskov(self, X, Y):
         # Add tiny noise to break ties (crucial for KSG)
         X = X + 1e-10 * np.random.rand(*X.shape)
         Y = Y + 1e-10 * np.random.rand(*Y.shape)
