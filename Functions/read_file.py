@@ -6,7 +6,8 @@ import os
 
 def read_file(filename, metric="mi_history", unpack=False):
 
-    path = f"Results/{filename}"
+    #path = f"Results/{filename}"
+    path = filename
 
     try:
         with open(path, "rb") as f:
