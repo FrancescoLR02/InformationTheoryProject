@@ -122,8 +122,9 @@ def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_e
         sm.set_array([])
 
         cbar = fig.colorbar(sm, cax=ax_cb, orientation='vertical')
-        cbar.set_ticks(np.array(epoch_range)+1)
-        cbar.set_ticklabels(np.array(epoch_range)+1)
+        ticks = (np.array(epoch_range) + 1)[::5]   # tick every 5
+        cbar.set_ticks(ticks)
+        cbar.set_ticklabels(ticks)
         cbar.set_label("Epoch", fontsize=14)
 
     # --------------------------------------------------------------------------------------------------------------------------
@@ -160,8 +161,9 @@ def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_e
 
         cbar = plt.colorbar(sm, ax=ax)
         cbar.set_label("Epoch", fontsize=14)
-        cbar.set_ticks(np.array(epoch_range)+1)
-        cbar.set_ticklabels(np.array(epoch_range)+1)
+        ticks = (np.array(epoch_range) + 1)[::5]   # tick every 5
+        cbar.set_ticks(ticks)
+        cbar.set_ticklabels(ticks)
 
         plt.tight_layout()
         plt.show()
