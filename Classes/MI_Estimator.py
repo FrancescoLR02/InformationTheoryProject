@@ -67,10 +67,11 @@ class MI_Estimator:
             return HX + HY - HXY
 
         if method_layer == "kraskov":
-            return self.entropy_kraskov(X, Y)
+            return self.mut_info_kraskov(X, Y)
 
         if method_layer == "vae":
-            return self.entropy_vae(X, Y)
+            print("self.entropy_vae(X, Y) TO BE IMPLEMENTED")
+            #return self.entropy_vae(X, Y)
     
     # ------------------------- KDE METHOD -------------------------
 
@@ -92,7 +93,7 @@ class MI_Estimator:
         return np.mean(kernel, axis=1)
 
     # ------------------------- KRASKOV METHOD ------------------------- # MAI TESTATO DA VEDERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    def entropy_kraskov(self, X, Y):
+    def mut_info_kraskov(self, X, Y):
         # Add tiny noise to break ties (crucial for KSG)
         X = X + 1e-10 * np.random.rand(*X.shape)
         Y = Y + 1e-10 * np.random.rand(*Y.shape)
