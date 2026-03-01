@@ -1,3 +1,18 @@
+import torch
+import torch.optim as optim
+
+from .ExperimentConfig import ExperimentConfig
+from .VariationalAutoEncoder import VariationalAutoEncoder
+from .ActivationRecorder import ActivationRecorder
+from .MI_Estimator import MI_Estimator
+from .MI_History import MI_History
+
+from ..Functions.VAE_info import VAE_info
+
+
+
+
+
 class VAEFramedTrainer:
     
     def __init__(self, ds_manager, device):
@@ -51,10 +66,10 @@ class VAEFramedTrainer:
                 raise ValueError(f"bit_type must be 'real', 'restricted', or 'discrete', you wrote '{bit_type}' not a valid choice.")
 
         if Variational: kl_loss = -0.5 * torch.sum(1 + logVar - mean.pow(2) - logVar.exp())
-        else: kl_loss = 0
-        total = mse + penalty + premium + kl_loss
+        else: kl_loss = torch.tensor(0, device=self.device)
+        total = mse + kl_loss + penalty + premium
 
-        return mse, penalty, premium, total
+        return mse, kl_loss, penalty, premium, total
 
 
     # ---------------------------------------RUN (TRAINING)------------------------------------------------------
@@ -95,6 +110,7 @@ class VAEFramedTrainer:
         for epoch in range(1, epochs + 1):
             
             total_mse = 0
+            total_kl = 0
             total_penalty = 0
             total_premium = 0
             train_total_loss = 0
@@ -114,12 +130,12 @@ class VAEFramedTrainer:
 
                 
                 # Loss & Backward
-                mse, penalty, premium, loss = self.loss_function(data, x_hat, z, b, penalize_lambda, premium_lambda, bit_type, mean, logVar, Variational)
+                mse, kl_loss, penalty, premium, loss = self.loss_function(data, x_hat, z, b, penalize_lambda, premium_lambda, bit_type, mean, logVar, Variational)
                 loss.backward()
                 optimizer.step()            
 
-
-                total_mse += mse.item() 
+                total_mse += mse.item()
+                total_kl += kl_loss.item() 
                 total_penalty += penalty.item()
                 total_premium += premium.item()
                 
@@ -137,6 +153,11 @@ class VAEFramedTrainer:
             model.train_loss_history.append(avg_total)
 
             logging_string = f"[{config.name}] Epoch {epoch}/{epochs} | Train loss: {avg_total:.2f}"
+
+            if Variational:
+                avg_kl = total_kl / N
+                model.kl_history.append(avg_mse)
+                logging_string += f" | KL: {avg_kl:.2f}"
             
             if penalize_lambda:
                 avg_mse = total_mse / N

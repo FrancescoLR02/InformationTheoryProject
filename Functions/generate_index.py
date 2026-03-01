@@ -1,3 +1,5 @@
+from .LIBRARIES_FUNCTIONS import *
+
 # To generate content index for notebook
 def generate_index(file="Restyle.ipynb", title="Index"):
     with open(file, "r", encoding="utf-8") as f:

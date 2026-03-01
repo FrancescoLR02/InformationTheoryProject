@@ -1,3 +1,5 @@
+from .LIBRARIES_FUNCTIONS import *
+
 def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_epoch=-1, Step=5, whichplot="enc/dec"):
 
     mi_history_encoder = mi_history.encoder

@@ -1,3 +1,6 @@
+from typing import Dict, Any
+
+
 class ExperimentConfig:
     def __init__(self, 
                  name: str, 

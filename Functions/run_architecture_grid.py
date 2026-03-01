@@ -1,3 +1,5 @@
+from .LIBRARIES_FUNCTIONS import *
+
 def run_architecture_grid(trainer, hidden_dims_list, latent_dims_list,
                           base_model_params, base_train_params, base_mi_params,
                           file_name="", Debug=False, Validation=False):
