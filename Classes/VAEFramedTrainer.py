@@ -18,7 +18,6 @@ class VAEFramedTrainer:
     def __init__(self, ds_manager, device):
         
         self.device = device
-        
         # Take dataloaders from ds_manager
         self.train_loader = ds_manager.train_loader
         self.test_loader  = ds_manager.test_loader
@@ -28,6 +27,7 @@ class VAEFramedTrainer:
     
     # Setup loss function (b is the quantize z in VAE class)
     def loss_function(self, x, x_hat, z, b, penalize_lambda, premium_lambda, bit_type, mean, logVar, Variational):
+
         mse = torch.nn.functional.mse_loss(x_hat, x, reduction="sum") # sum over all pixels
 
         # case where penalize and premium are zero
@@ -40,7 +40,11 @@ class VAEFramedTrainer:
         match bit_type:
         
             case "real": # normal, no restiction at all
-                pass
+                if penalize_lambda:
+                    penalty = penalize_lambda * torch.sum( (z*z-1)**2 )
+                if premium_lambda:
+                    premium = premium_lambda * torch.sum( (z*z-1)**2 )
+                
 
             case "restricted": # case z=-1/+1 is implemented     
                 #penalty = penalize_lambda * torch.sum( (p*(p-1))**2 ) # penalize values different both from 0 or 1
@@ -65,8 +69,11 @@ class VAEFramedTrainer:
             case _: # every other cases
                 raise ValueError(f"bit_type must be 'real', 'restricted', or 'discrete', you wrote '{bit_type}' not a valid choice.")
 
-        if Variational: kl_loss = -0.5 * torch.sum(1 + logVar - mean.pow(2) - logVar.exp())
-        else: kl_loss = torch.tensor(0, device=self.device)
+        if Variational:
+            kl_loss = -0.5 * torch.sum(1 + logVar - mean.pow(2) - logVar.exp())
+        else:
+            kl_loss = torch.tensor(0, device=self.device)
+
         total = mse + kl_loss + penalty + premium
 
         return mse, kl_loss, penalty, premium, total
@@ -106,7 +113,23 @@ class VAEFramedTrainer:
         
         epochs = config.train_params.get("epochs", 20)
         model.train()
+
+        # Show only epoch progrosse at 0%,25%,50%,75%,100%
+        if epochs <= 5:
+            show_epochs = list(range(1, epochs + 1))
+        else:
+            show_epochs = [
+                1,
+                int(0.25 * epochs),
+                int(0.50 * epochs),
+                int(0.75 * epochs),
+                epochs
+            ]
+        show_epochs = sorted(set(show_epochs))
+
+
         
+        # __________________________  LOOP OVER THE EPOCHS  ____________________________
         for epoch in range(1, epochs + 1):
             
             total_mse = 0
@@ -143,7 +166,7 @@ class VAEFramedTrainer:
 
             if Debug: 
                 print(f"epoch {epoch}")
-                print(f"N={N} self.train_loader.dataset")
+                print(f"N={len(self.train_loader.dataset)} self.train_loader.dataset")
                 print(f"length test_loader.dataset {len(self.test_loader.dataset)}")
 
             # _______________________________ STORAGE LOSS VALUES ___________________________________ 
@@ -157,7 +180,7 @@ class VAEFramedTrainer:
             if Variational:
                 avg_kl = total_kl / N
                 model.kl_history.append(avg_kl)
-                logging_string += f" | KL: {avg_kl:.2f}"
+                # logging_string += f" | KL: {avg_kl:.2f}"
             
             if penalize_lambda:
                 avg_mse = total_mse / N
@@ -183,7 +206,7 @@ class VAEFramedTrainer:
                     for data, label in self.test_loader:
                         data = data.to(self.device).view(data.size(0), -1)
                         x_hat, z, b, mean, logVar = model(data, label)
-                        _, _, _, loss_val = self.loss_function(data, x_hat, z, b, penalize_lambda, premium_lambda, bit_type, mean, logVar, Variational)
+                        _, _, _, _, loss_val = self.loss_function(data, x_hat, z, b, penalize_lambda, premium_lambda, bit_type, mean, logVar, Variational)
                         val_total_loss += loss_val.item() #.item() needed to extract the number in PyTorch
 
                 M = len(self.test_loader.dataset)
@@ -194,7 +217,9 @@ class VAEFramedTrainer:
 
             #_____________________________ Show losses progress _________________________________
             #if Debug:
-            print(logging_string)
+
+            if epoch in show_epochs:
+                print(logging_string)
 
             
             #_____________________________ Mut Info Calculation + Storage _________________________________
