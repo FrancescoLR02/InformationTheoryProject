@@ -142,14 +142,13 @@ class ActivationRecorder:
         elif isinstance(labels, int):
             labels = [labels]
 
-
         # Determine latent dimension from any label
         sample = self.select_by_label(labels[0])
         latentDim = sample["latent_quant"].shape[1]
 
-        # Decide how many neurons per subplot
-        neurons_per_plot = 40
-        num_plots = int(np.ceil(latentDim / neurons_per_plot))
+        # Force exactly 2 plots per label
+        num_plots = 2
+        half = latentDim // 2
 
         # Color map for different labels
         cmap = plt.get_cmap("tab10")
@@ -157,10 +156,10 @@ class ActivationRecorder:
 
         # Prepare figure
         fig, axes = plt.subplots(len(labels), num_plots,
-                                 figsize=(num_plots * 9, len(labels) * 4),
-                                 squeeze=False)
+                                figsize=(num_plots * 9, len(labels) * 4),
+                                squeeze=False)
 
-        fig.suptitle("Bit=1 frequency per latent neuron", fontsize=26, weight="bold", y=0.995)
+        fig.suptitle("Bit=1 frequency per latent neuron", fontsize=26)
 
         # Iterate over labels
         for row, digit in enumerate(labels):
@@ -174,39 +173,32 @@ class ActivationRecorder:
             # Frequency of bit=1 per neuron
             freq = bit_is_one.mean(axis=0)
 
-            # Plot across multiple subplots if needed
-            for p in range(num_plots):
-                start = p * neurons_per_plot
-                end = min((p + 1) * neurons_per_plot, latentDim)
+            # --- LEFT subplot: first half ---
+            ax_left = axes[row, 0]
+            ax_left.bar(np.arange(0, half), freq[:half],
+                        color=label_colors[digit], edgecolor="black")
+            ax_left.set_ylim(0, 1)
+            ax_left.grid(axis="y", alpha=0.3)
+            ax_left.set_xlabel("Neuron index", fontsize=14)
+            ax_left.set_ylabel("Fraction bit = 1", fontsize=14)
 
-                ax = axes[row, p]
+            # --- RIGHT subplot: second half ---
+            ax_right = axes[row, 1]
+            ax_right.bar(np.arange(half, latentDim), freq[half:],
+                        color=label_colors[digit], edgecolor="black")
+            ax_right.set_ylim(0, 1)
+            ax_right.grid(axis="y", alpha=0.3)
+            ax_right.set_xlabel("Neuron index", fontsize=14)
 
-                ax.bar(np.arange(start, end), freq[start:end],
-                       color=label_colors[digit], edgecolor="black")
+            # --- Title for the whole row (centered above both plots) ---
+            # Use the left axis but center the title across the row
+            ax_left.set_title(f"Label {digit}", fontsize=20, weight="bold", color=label_colors[digit], pad=25, loc='right')
 
-                ax.set_ylim(0, 1)
-                ax.grid(axis="y", alpha=0.3)
-
-                # Larger ticks and labels
-                ax.tick_params(axis='both', labelsize=12)
-
-                # Axis labels
-                ax.set_xlabel("Neuron index", fontsize=14)
-                if p == 0:
-                    ax.set_ylabel("Fraction bit = 1", fontsize=14)
-
-                # Title for each subplot
-                ax.set_title(f"Neurons {start}–{end-1}", fontsize=14, pad=10)
-
-            # Add a centered label title UNDER the row
-            fig.text(0.5,
-                     1 - ((row + 1) / len(labels)) + 0.01,
-                     f"Label {digit}",
-                     ha="center",
-                     va="center",
-                     fontsize=20,
-                     weight="bold",
-                     color=label_colors[digit])
+            # Titles for individual subplots (optional)
+            ax_left.text(0.5, 1.02, f"Neurons 0–{half-1}",
+                        transform=ax_left.transAxes, ha='center', fontsize=14)
+            ax_right.text(0.5, 1.02, f"Neurons {half}–{latentDim-1}",
+                        transform=ax_right.transAxes, ha='center', fontsize=14)
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
         plt.show()
