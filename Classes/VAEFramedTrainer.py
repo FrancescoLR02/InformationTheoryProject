@@ -40,10 +40,8 @@ class VAEFramedTrainer:
         match bit_type:
         
             case "real": # normal, no restiction at all
-                if penalize_lambda:
-                    penalty = penalize_lambda * torch.sum( (z*z-1)**2 )
-                if premium_lambda:
-                    premium = premium_lambda * torch.sum( (z*z-1)**2 )
+                penalty = torch.tensor(0, device=self.device)
+                premium = torch.tensor(0, device=self.device)
                 
 
             case "restricted": # case z=-1/+1 is implemented     

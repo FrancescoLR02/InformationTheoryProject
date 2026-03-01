@@ -213,15 +213,15 @@ class VariationalAutoEncoder(nn.Module):
     #--------------------PLOT LOSS
     #--------------------------------------------------------------------------------------------------------------------------------------
 
-    def plot_loss(self):
+    def plot_loss(self, start_epoch = 1):
         epochs = range(1, len(self.train_loss_history) + 1)
 
         # FIGURE 1: Training vs Validation (validation if present)
         plt.figure(figsize=(10, 5))
-        plt.plot(epochs, self.train_loss_history, color='blue', linewidth=2, label='Training loss')
+        plt.plot(epochs[start_epoch:], self.train_loss_history[start_epoch:], color='blue', linewidth=2, label='Training loss')
         
         if self.val_loss_history:
-            plt.plot(epochs, self.val_loss_history, color='red', linewidth=2, label='Validation loss')
+            plt.plot(epochs[start_epoch:], self.val_loss_history[start_epoch:], color='red', linewidth=2, label='Validation loss')
 
         plt.xlabel("Epoch")
         plt.ylabel("Loss")
@@ -236,22 +236,22 @@ class VariationalAutoEncoder(nn.Module):
         if self.penalty_history or self.premium_history:
             plt.figure(figsize=(10, 5))
 
-            plt.plot(epochs, self.train_loss_history, color='blue', linewidth=2, linestyle='--', label='Total loss')
+            plt.plot(epochs[start_epoch:], self.train_loss_history[start_epoch:], color='blue', linewidth=2, linestyle='--', label='Total loss')
 
             # MSE
-            plt.plot(epochs, self.mse_history, color='green', linewidth=2, label='MSE component')
+            plt.plot(epochs[start_epoch:], self.mse_history[start_epoch:], color='green', linewidth=2, label='MSE component')
 
             # KL component
             if self.Variational:
-                plt.plot(epochs, self.kl_history, color='yellow', linewidth=2, label='KL div. component')
+                plt.plot(epochs[start_epoch:], self.kl_history[start_epoch:], color='yellow', linewidth=2, label='KL div. component')
 
             # Penalty (if present)
             if self.penalty_history:
-                plt.plot(epochs, self.penalty_history, color='orange', linewidth=2, label='Penalty component')
+                plt.plot(epochs[start_epoch:], self.penalty_history[start_epoch:], color='orange', linewidth=2, label='Penalty component')
 
             # Premium (if present)
             if self.premium_history:
-                plt.plot(epochs, self.premium_history, color='purple', linewidth=2, label='Premium component')
+                plt.plot(epochs[start_epoch:], self.premium_history[start_epoch:], color='purple', linewidth=2, label='Premium component')
 
             plt.xlabel("Epoch")
             plt.ylabel("Loss components")
