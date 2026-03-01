@@ -6,7 +6,9 @@ import numpy as np
 # ============================
 # Machine Learning Tools
 # ============================
-from sklearn.neighbors import NearestNeighbors
+from sklearn.neighbors import KDTree
+from sklearn.decomposition import PCA
+#from sklearn.neighbors import NearestNeighbors
 
 # ============================
 # Special Functions
@@ -92,39 +94,51 @@ class MI_Estimator:
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
 
-    # ------------------------- KRASKOV METHOD ------------------------- # MAI TESTATO DA VEDERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    # ------------------------- KRASKOV METHOD ----------------------------
     def mut_info_kraskov(self, X, Y):
-        # Add tiny noise to break ties (crucial for KSG)
+
+        # Se le dimensioni sono troppe, comprimiamo a 30 componenti principali
+        MAX_DIM = 30
+        
+        if X.shape[1] > MAX_DIM:
+            X = PCA(n_components=MAX_DIM).fit_transform(X)
+        if Y.shape[1] > MAX_DIM:
+            Y = PCA(n_components=MAX_DIM).fit_transform(Y)
+        
+
+        # Aggiungiamo un piccolissimo rumore per rompere i pareggi (fondamentale per KSG)
         X = X + 1e-10 * np.random.rand(*X.shape)
         Y = Y + 1e-10 * np.random.rand(*Y.shape)
         
         N = X.shape[0]
         XY = np.hstack([X, Y])
         
-        # 1. Find k-nearest neighbors in Joint Space (max norm)
-        knn = NearestNeighbors(n_neighbors=self.n_neig + 1, metric='chebyshev')
-        knn.fit(XY)
-        dists, _ = knn.kneighbors(XY)
+        # 1. Troviamo i k-nearest neighbors nello Spazio Congiunto (norma max / chebyshev)
+        tree_xy = KDTree(XY, metric='chebyshev')
+        # Chiediamo k+1 perché il punto stesso viene contato (distanza 0)
+        dists, _ = tree_xy.query(XY, k=self.n_neig + 1)
         
-        # Distance to the k-th neighbor
+        # La distanza dall'ultimo vicino (il k-esimo)
         radii = dists[:, -1]
         
-        # 2. Count neighbors in marginal spaces within those radii
-        # We need efficient search, so we fit new trees
-        knn_x = NearestNeighbors(metric='chebyshev').fit(X)
-        knn_y = NearestNeighbors(metric='chebyshev').fit(Y)
+        # 2. Contiamo i vicini negli spazi marginali (X e Y) entro questi raggi
+        # Usiamo direttamente KDTree che supporta array di raggi!
+        tree_x = KDTree(X, metric='chebyshev')
+        tree_y = KDTree(Y, metric='chebyshev')
         
-        # radius_neighbors returns array of arrays of indices
-        nx_indices = knn_x.radius_neighbors(X, radius=radii, return_distance=False)
-        ny_indices = knn_y.radius_neighbors(Y, radius=radii, return_distance=False)
+        # query_radius ora accetta l'array 'radii' senza problemi
+        nx_indices = tree_x.query_radius(X, r=radii)
+        ny_indices = tree_y.query_radius(Y, r=radii)
         
-        # Count lengths (subtract 1 because query point is included)
-        nx = np.array([len(i) - 1 for i in nx_indices])
-        ny = np.array([len(i) - 1 for i in ny_indices])
+        # Contiamo quanti elementi ci sono nel raggio (sottraendo 1 per escludere il punto stesso)
+        # max(0, ...) ci protegge da rarissimi underflow numerici
+        nx = np.array([max(0, len(i) - 1) for i in nx_indices])
+        ny = np.array([max(0, len(i) - 1) for i in ny_indices])
         
-        # 3. KSG Formula
+        # 3. Formula KSG
         # MI = psi(k) + psi(N) - <psi(nx+1) + psi(ny+1)>
         mi = (digamma(self.n_neig) + digamma(N) - 
               np.mean(digamma(nx + 1) + digamma(ny + 1)))
               
-        return max(0, mi)
+        return max(0.0, mi)
