@@ -142,6 +142,7 @@ class ActivationRecorder:
         elif isinstance(labels, int):
             labels = [labels]
 
+
         # Determine latent dimension from any label
         sample = self.select_by_label(labels[0])
         latentDim = sample["latent_quant"].shape[1]
