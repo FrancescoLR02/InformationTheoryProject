@@ -58,7 +58,7 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
         layer_name = f"encoder_layer_{i+1}"
         h = RecorderActivat.get(layer_name)
         mi["encoder"].append((
-            mi_estimator.mutual_information(X, h, method_in_h), # I(Input, Layer)
+            mi_estimator.mutual_information(h, X, method_in_h), # I(Layer, Input)
             mi_estimator.mutual_information(h, Z, method_h_z)  # I(Layer, Latent)
         ))
         #print("x_h  h_z")
@@ -68,13 +68,13 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
         layer_name = f"decoder_layer_{i+1}"
         h = RecorderActivat.get(layer_name)
         mi["decoder"].append((
-            mi_estimator.mutual_information(Z, h, method_z_h), # I(Latent, Layer)
+            mi_estimator.mutual_information(h, Z, method_z_h), # I(Layer, Latent)
             mi_estimator.mutual_information(h, Y, method_h_out)  # I(Layer, Output)
         ))
         #print("z_h  h_y")
 
     mi["input_latent"]  = mi_estimator.mutual_information(X, Z, method_in_z)  # I(Input, Latent)
-    mi["latent_output"] = mi_estimator.mutual_information(Z, Y, method_z_out) # I(Latent, Output)
+    mi["latent_output"] = mi_estimator.mutual_information(Y, Z, method_z_out) # I(Output, Latent)
     #print("x_z  z_y")
     
     # Store the mi calculated
