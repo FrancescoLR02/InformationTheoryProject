@@ -73,6 +73,7 @@ class VariationalAutoEncoder(nn.Module):
 
         # train_loss if there is regularizatin/penalty/premium
         self.mse_history = []
+        self.kl_history = []
         self.penalty_history = []
         self.premium_history = []
 
@@ -239,6 +240,10 @@ class VariationalAutoEncoder(nn.Module):
 
             # MSE
             plt.plot(epochs, self.mse_history, color='green', linewidth=2, label='MSE component')
+
+            # KL component
+            if self.Variational:
+                plt.plot(epochs, self.kl_history, color='yellow', linewidth=2, label='KL div. component')
 
             # Penalty (if present)
             if self.penalty_history:

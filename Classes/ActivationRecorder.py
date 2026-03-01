@@ -394,7 +394,7 @@ class ActivationRecorder:
         plt.tight_layout()
         plt.show()
 
-        return epochs, mse_values
+        #return epochs, mse_values
 
 
 

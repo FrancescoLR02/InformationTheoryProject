@@ -1,3 +1,5 @@
 .ipynb_checkpoints/
 __pycache__/
 .Rhistory
+Classes/__pycache__/
+Functions/__pycache__/
