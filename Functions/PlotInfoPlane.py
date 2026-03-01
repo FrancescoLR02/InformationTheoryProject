@@ -17,7 +17,7 @@ def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_e
     gs = fig.add_gridspec(1, 3, width_ratios=[6, 6, 0.2], wspace=0.3)
 
     if suptitle != "":
-        fig.suptitle(suptitle, size=16, weight="bold")
+        fig.suptitle(suptitle, size=20)#, weight="bold")
 
     # Create axes
     ax_enc = fig.add_subplot(gs[0, 0])
@@ -168,40 +168,3 @@ def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_e
 
     # --------------------------------------------------------------------------------------------------------------------------
     # --------------------------------------------------------------------------------------------------------------------------
-
-    # ---------------- GLOBAL: INPUT/LATENT/OUTPUT ----------------
-
-    if whichplot in ("in/out", "all"):
-        mi_input_latent  = mi_history.input_latent
-        mi_latent_output = mi_history.latent_output
-        # --- Extract MI values for selected epochs ---
-        X_vals = [mi_input_latent[ep] for ep in epoch_range]
-        Y_vals = [mi_latent_output[ep] for ep in epoch_range]
-
-        cmap = plt.get_cmap("Greens")
-        colors = [cmap(i / max(1, len(epoch_range) - 1)) for i in range(len(epoch_range))]
-
-        fig, ax = plt.subplots(figsize=(6, 5))
-
-        for i, ep in enumerate(epoch_range):
-            ax.scatter( X_vals[i], Y_vals[i], s=80, marker='o', facecolors=colors[i], edgecolors='black', linewidths=0.6, label=f"Epoch {ep}" )
-
-        # Labels and title
-        ax.set_xlabel("MI(Input; Latent)", fontsize=14)
-        ax.set_ylabel("MI(Latent; Output)", fontsize=14)
-        ax.set_title(f"Global Mutual Information {title_suffix}", fontsize=16)
-        ax.grid(True, alpha=0.3)
-        ax.tick_params(axis='both', labelsize=12)
-
-        # --- COLORBAR GLOBAL INPUT/OUTPUT ---
-        norm = Normalize(vmin=start_epoch + 1, vmax=end_epoch + 1)
-        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm.set_array([])
-
-        cbar = plt.colorbar(sm, ax=ax)
-        cbar.set_label("Epoch", fontsize=14)
-        cbar.set_ticks(np.array(epoch_range)+1)
-        cbar.set_ticklabels(np.array(epoch_range)+1)
-
-        plt.tight_layout()
-        plt.show()
