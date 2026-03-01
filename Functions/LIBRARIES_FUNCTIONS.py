@@ -53,25 +53,44 @@ from tqdm import tqdm
 # ============================
 # Export list
 # ============================
+
 __all__ = [
     # Standard Library
     "os", "random", "pickle", "json", "re", "List",
 
-    # Scientific & Data Handling
-    "np", "pd", "digamma", "NearestNeighbors",
+    # Scientific
+    "np",
 
     # PyTorch
-    "torch", "nn", "DataLoader", "torchvision", "transforms",
+    "torch", "nn", "DataLoader",
 
     # Visualization
-    "plt", "cm", "Normalize", "Line2D", "FuncAnimation",
+    "plt", "cm", "Normalize", "Line2D",
 
     # Jupyter / IPython
-    "HTML", "clear_output", "Markdown", "display", "Image",
-
-    # Progress Bars
-    "tqdm"
+    "Markdown", "display",
 ]
+
+
+# __all__ = [
+#     # Standard Library
+#     "os", "random", "pickle", "json", "re", "List",
+
+#     # Scientific & Data Handling
+#     "np", "pd", "digamma", "NearestNeighbors",
+
+#     # PyTorch
+#     "torch", "nn", "DataLoader", "torchvision", "transforms",
+
+#     # Visualization
+#     "plt", "cm", "Normalize", "Line2D", "FuncAnimation",
+
+#     # Jupyter / IPython
+#     "HTML", "clear_output", "Markdown", "display", "Image",
+
+#     # Progress Bars
+#     "tqdm"
+# ]
 
 #*****************************************************************************************************************
 #*****************************************************************************************************************

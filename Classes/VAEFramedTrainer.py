@@ -2,12 +2,12 @@ import torch
 import torch.optim as optim
 
 from .ExperimentConfig import ExperimentConfig
-from .VariationalAutoEncoder import VariationalAutoEncoder
+from .VariationalModel import VariationalAutoEncoder
 from .ActivationRecorder import ActivationRecorder
 from .MI_Estimator import MI_Estimator
 from .MI_History import MI_History
 
-from ..Functions.VAE_info import VAE_info
+from Functions.VAE_info import VAE_info
 
 
 
@@ -156,7 +156,7 @@ class VAEFramedTrainer:
 
             if Variational:
                 avg_kl = total_kl / N
-                model.kl_history.append(avg_mse)
+                model.kl_history.append(avg_kl)
                 logging_string += f" | KL: {avg_kl:.2f}"
             
             if penalize_lambda:
@@ -222,5 +222,5 @@ class VAEFramedTrainer:
             "model": model,
             "optimizer": optimizer,
             "recorder": recorder,
-            "mi_history": mi_history,
+            "mi_history": mi_history
         }

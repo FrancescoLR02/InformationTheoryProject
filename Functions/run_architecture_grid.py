@@ -1,4 +1,9 @@
-from .LIBRARIES_FUNCTIONS import *
+import pickle
+from itertools import product
+
+from Classes.ExperimentConfig import ExperimentConfig
+
+
 
 def run_architecture_grid(trainer, hidden_dims_list, latent_dims_list,
                           base_model_params, base_train_params, base_mi_params,

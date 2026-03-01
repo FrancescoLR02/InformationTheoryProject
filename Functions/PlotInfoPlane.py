@@ -1,4 +1,12 @@
-from .LIBRARIES_FUNCTIONS import *
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+from matplotlib.lines import Line2D
+from matplotlib import cm
+
+
+
+
 
 def PlotInfoPlane(mi_history, title_suffix="", suptitle="", start_epoch=1, end_epoch=-1, Step=5, whichplot="enc/dec"):
 
