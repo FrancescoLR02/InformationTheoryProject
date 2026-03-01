@@ -1,5 +1,6 @@
 import pickle
 from itertools import product
+from datetime import datetime
 
 from Classes.ExperimentConfig import ExperimentConfig
 
@@ -43,7 +44,10 @@ def run_architecture_grid(trainer, hidden_dims_list, latent_dims_list,
         else: method_array = method
         
         suffix = f"-{base_model_params['bit_type']}-{method_array}-sigma{base_mi_params['sigma']}"
-        with open("Results/" + file_name + suffix + ".pkl", "wb") as f:
+        timestamp = datetime.now().strftime("-%d%B%H%M")
+        final_path = "Results/" + file_name + suffix + timestamp + ".pkl"
+
+        with open(final_path, "wb") as f:
             pickle.dump(results_grid, f)
 
-    return results_grid
+    return results_grid, final_path
