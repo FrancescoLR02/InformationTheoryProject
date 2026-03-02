@@ -175,10 +175,10 @@ class VAEFramedTrainer:
 
             logging_string = f"[{config.name}] Epoch {epoch}/{epochs} | Train loss: {avg_total:.2f}"
 
-            if Variational:
-                avg_kl = total_kl / N
-                model.kl_history.append(avg_kl)
-                # logging_string += f" | KL: {avg_kl:.2f}"
+            # if Variational:
+            #     avg_kl = total_kl / N
+            #     model.kl_history.append(avg_kl)
+            #     # logging_string += f" | KL: {avg_kl:.2f}"
             
             if penalize_lambda:
                 avg_mse = total_mse / N

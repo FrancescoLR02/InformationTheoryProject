@@ -34,28 +34,28 @@ class MI_Estimator:
     def __init__(self, method, sigma=1.0, n_neig=3, default="kde"):
         self.sigma  = sigma
         self.n_neig = n_neig
-        self.method = self.create_method_array(method, default)
+        #self.method = self.create_method_array(method, default)
         # for mi methods self.method = ["in_h", "h_z" ,"in_z", "z_h", "h_out", "z_out"]
 
-    def create_method_array(self, method, default):
-        # if only a string is passed it is replicated 6 times
-        if isinstance(method, str):
-            method_array = [method] * 6
-            return method_array
+    # def create_method_array(self, method, default):
+    #     # if only a string is passed it is replicated 6 times
+    #     if isinstance(method, str):
+    #         method_array = [method] * 6
+    #         return method_array
         
-        # if a list of string is passed we fill it to 6 methods with the default type
-        if isinstance(method, (list, tuple)):
-            method_array = list(method) # convert tuple eventually into list
+    #     # if a list of string is passed we fill it to 6 methods with the default type
+    #     if isinstance(method, (list, tuple)):
+    #         method_array = list(method) # convert tuple eventually into list
 
-            while len(method_array) < 6:
-                method_array.append(default)
-            return method_array[:6] # always a list of 6 strings is returned
+    #         while len(method_array) < 6:
+    #             method_array.append(default)
+    #         return method_array[:6] # always a list of 6 strings is returned
 
 
 
     # ------------------------- MUTUAL INFO -------------------------
 
-    def mutual_information(self, X, Y, method_layer):
+    def mutual_information(self, X, Y, method_layer = 'kde'):
         X = np.asarray(X)
         Y = np.asarray(Y)  
         # Reshape 1D arrays
@@ -66,6 +66,11 @@ class MI_Estimator:
             HX = self.entropy_kde(X)
             HY = self.entropy_kde(Y)
             HXY = self.entropy_kde(np.concatenate([X, Y], axis=1))
+
+            # N_samples = X.shape[0]
+            # print(f"Max possible entropy log(N): {np.log(N_samples):.4f}")
+            # print(f"H(X): {HX:.4f} | H(Y): {HY:.4f} | H(X,Y): {HXY:.4f}")
+
             return HX + HY - HXY
 
         if method_layer == "kraskov":
@@ -90,12 +95,12 @@ class MI_Estimator:
         dists_sq = np.maximum(dists_sq, 0)
         
         #sigma_scaled = self.sigma  # self.sigma * np.sqrt(d) (Scale sigma by dimension) ***********************IMP**********************
-        sigma_scaled = self.sigma #* np.sqrt(d) 
+        sigma_scaled = self.sigma# * np.sqrt(d) 
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
 
 
-    # ------------------------- KDE METHOD -------------------------
+    # # ------------------------- KDE METHOD -------------------------
 
     # def entropy_kde(self, data):
     #     rho = self.density(data)
