@@ -77,26 +77,6 @@ class MI_Estimator:
     
     # # ------------------------- KDE METHOD -------------------------
 
-    # def entropy_kde(self, data):
-    #     rho = self.density(data)
-    #     return - float( np.mean(np.log(rho + 1e-10)) )
-
-    # def density(self, data):
-    #     N, d = data.shape
-        
-    #     data_sq = np.sum(data**2, axis=1, keepdims=True)
-    #     dists_sq = data_sq + data_sq.T - 2 * data @ data.T
-    #     # sometimes (due to numerical issue) there are small negative squared distances
-    #     dists_sq = np.maximum(dists_sq, 0)
-        
-    #     #sigma_scaled = self.sigma  # self.sigma * np.sqrt(d) (Scale sigma by dimension) ***********************IMP**********************
-    #     sigma_scaled = self.sigma #* np.sqrt(d) 
-    #     kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
-    #     return np.mean(kernel, axis=1)
-
-
-    # ------------------------- KDE METHOD -------------------------
-
     def entropy_kde(self, data):
         rho = self.density(data)
         return - float( np.mean(np.log(rho + 1e-10)) )
@@ -104,34 +84,54 @@ class MI_Estimator:
     def density(self, data):
         N, d = data.shape
         
-        # Calculate squared pairwise distances
         data_sq = np.sum(data**2, axis=1, keepdims=True)
         dists_sq = data_sq + data_sq.T - 2 * data @ data.T
-        dists_sq = np.maximum(dists_sq, 0) # Prevent numerical negative zeros
+        # sometimes (due to numerical issue) there are small negative squared distances
+        dists_sq = np.maximum(dists_sq, 0)
         
-        # ---------------------------------------------------------
-        # DYNAMIC BANDWIDTH (ADAPTIVE SIGMA)
-        # ---------------------------------------------------------
-        # 1. Extract unique pairwise distances (upper triangle, ignoring diagonal 0s)
-        tri_idx = np.triu_indices_from(dists_sq, k=1)
-        pairwise_dists = np.sqrt(dists_sq[tri_idx])
-        
-        # 2. Calculate the median distance to gauge the current spread of the manifold.
-        # We use median instead of mean because it is much more robust to outliers.
-        if len(pairwise_dists) > 0:
-            median_dist = np.median(pairwise_dists)
-        else:
-            median_dist = 1.0 # Fallback for N=1
-            
-        # 3. Scale the base sigma by the median distance.
-        # We add 1e-8 to prevent division by zero if all points are identical.
-        sigma_scaled = self.sigma * (median_dist + 1e-8)
-        # ---------------------------------------------------------
-
-        # Compute Gaussian Kernel with the adaptive sigma
+        #sigma_scaled = self.sigma  # self.sigma * np.sqrt(d) (Scale sigma by dimension) ***********************IMP**********************
+        sigma_scaled = self.sigma #* np.sqrt(d) 
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
-        
         return np.mean(kernel, axis=1)
+
+
+    # ------------------------- KDE METHOD -------------------------
+
+    # def entropy_kde(self, data):
+    #     rho = self.density(data)
+    #     return - float( np.mean(np.log(rho + 1e-10)) )
+
+    # def density(self, data):
+    #     N, d = data.shape
+        
+    #     # Calculate squared pairwise distances
+    #     data_sq = np.sum(data**2, axis=1, keepdims=True)
+    #     dists_sq = data_sq + data_sq.T - 2 * data @ data.T
+    #     dists_sq = np.maximum(dists_sq, 0) # Prevent numerical negative zeros
+        
+    #     # ---------------------------------------------------------
+    #     # DYNAMIC BANDWIDTH (ADAPTIVE SIGMA)
+    #     # ---------------------------------------------------------
+    #     # 1. Extract unique pairwise distances (upper triangle, ignoring diagonal 0s)
+    #     tri_idx = np.triu_indices_from(dists_sq, k=1)
+    #     pairwise_dists = np.sqrt(dists_sq[tri_idx])
+        
+    #     # 2. Calculate the median distance to gauge the current spread of the manifold.
+    #     # We use median instead of mean because it is much more robust to outliers.
+    #     if len(pairwise_dists) > 0:
+    #         median_dist = np.median(pairwise_dists)
+    #     else:
+    #         median_dist = 1.0 # Fallback for N=1
+            
+    #     # 3. Scale the base sigma by the median distance.
+    #     # We add 1e-8 to prevent division by zero if all points are identical.
+    #     sigma_scaled = self.sigma * (median_dist + 1e-8)
+    #     # ---------------------------------------------------------
+
+    #     # Compute Gaussian Kernel with the adaptive sigma
+    #     kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
+        
+    #     return np.mean(kernel, axis=1)
 
 
     # ------------------------- KRASKOV METHOD ----------------------------
