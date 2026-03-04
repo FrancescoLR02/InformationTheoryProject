@@ -100,7 +100,7 @@ from tqdm import tqdm
 #*****************************************************************************************************************
 
 # Inside here mutual informations are calculated & mut.info and also activations are stored!
-def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_history, RecorderActivat):
+def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_history, RecorderActivat, Variational):
 
     # -------------------------------- SETTING --------------------------------------
 
@@ -115,7 +115,7 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
     # ---------------------- CALCULATE & STORE ACTIVATIONS ----------------------------
 
     with torch.no_grad():
-        model(inputs, label) # Foward pass to get the activation value in RecorderActivat.activations
+        x_hat, z, b, mean, logVar = model(inputs, label) # Foward pass to get the activation value in RecorderActivat.activations
 
     RecorderActivat.save_epoch(epoch) # here we stored activation!
 
@@ -124,6 +124,12 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
     X = inputs.view(inputs.size(0), -1).cpu().numpy()
     Z = RecorderActivat.get("latent_space")
     Y = RecorderActivat.get("output_space")
+
+    if Variational:
+        mean = mean.cpu().numpy()
+        logVar = logVar.cpu().numpy()
+    else:
+        mean = Z
         
     mi = {
         "encoder": [],
@@ -138,7 +144,7 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
         A = RecorderActivat.get(layer_name)
         mi["encoder"].append((
             mi_estimator.mutual_information(A, X), # I(Layer, Input)
-            mi_estimator.mutual_information(A, Z)  # I(Layer, Latent)
+            mi_estimator.mutual_information(A, mean)  # I(Layer, Latent)
         ))
 
     # Decoder Layers
@@ -146,12 +152,19 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
         layer_name = f"decoder_layer_{i+1}"
         A = RecorderActivat.get(layer_name)
         mi["decoder"].append((
-            mi_estimator.mutual_information(A, Z), # I(Layer, Latent)
+            mi_estimator.mutual_information(A, mean), # I(Layer, Latent)
             mi_estimator.mutual_information(A, Y)  # I(Layer, Output)
         ))
 
-    mi["input_latent"]  = mi_estimator.mutual_information(X, Z)
-    mi["latent_output"] = mi_estimator.mutual_information(Z, Y)
+    if Variational: mi["input_latent"]  = mi_estimator.MutualInfor_Analytical(X, (mean, logVar))
+    else: mi["input_latent"]  = mi_estimator.mutual_information(X, Z)
+    mi["latent_output"] = mi_estimator.mutual_information(mean, Y)
+
+    if Variational:
+        mi['latent_points'] = mean
+
+    else:
+        mi['latent_points'] = Z
     
     # Store the mi calculated
     mi_history.append(mi)
@@ -186,8 +199,8 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
     #     ))
     #     #print("z_h  h_y")
 
-    # mi["input_latent"]  = mi_estimator.mutual_information(X, Z, method_in_z)  # I(Input, Latent)
-    # mi["latent_output"] = mi_estimator.mutual_information(Y, Z, method_z_out) # I(Output, Latent)
+    # mi["input_latent"]  = mi_estimator.mutual_information(X, (mean, logVar), method_layer = 'vae')
+    # mi["latent_output"] = mi_estimator.mutual_information(mean, Y, method_layer = 'kde')
     # #print("x_z  z_y")
     
     # # Store the mi calculated

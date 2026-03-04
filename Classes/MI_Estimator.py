@@ -34,22 +34,22 @@ class MI_Estimator:
     def __init__(self, method, sigma=1.0, n_neig=3, default="kde"):
         self.sigma  = sigma
         self.n_neig = n_neig
-        #self.method = self.create_method_array(method, default)
-        # for mi methods self.method = ["in_h", "h_z" ,"in_z", "z_h", "h_out", "z_out"]
+        self.method = self.create_method_array(method, default)
+        #for mi methods self.method = ["in_h", "h_z" ,"in_z", "z_h", "h_out", "z_out"]
 
-    # def create_method_array(self, method, default):
-    #     # if only a string is passed it is replicated 6 times
-    #     if isinstance(method, str):
-    #         method_array = [method] * 6
-    #         return method_array
+    def create_method_array(self, method, default):
+        # if only a string is passed it is replicated 6 times
+        if isinstance(method, str):
+            method_array = [method] * 6
+            return method_array
         
-    #     # if a list of string is passed we fill it to 6 methods with the default type
-    #     if isinstance(method, (list, tuple)):
-    #         method_array = list(method) # convert tuple eventually into list
+        # if a list of string is passed we fill it to 6 methods with the default type
+        if isinstance(method, (list, tuple)):
+            method_array = list(method) # convert tuple eventually into list
 
-    #         while len(method_array) < 6:
-    #             method_array.append(default)
-    #         return method_array[:6] # always a list of 6 strings is returned
+            while len(method_array) < 6:
+                method_array.append(default)
+            return method_array[:6] # always a list of 6 strings is returned
 
 
 
@@ -79,6 +79,25 @@ class MI_Estimator:
         if method_layer == "vae":
             print("self.entropy_vae(X, Y) TO BE IMPLEMENTED")
             #return self.entropy_vae(X, Y)
+
+    #Analytical result
+    def MutualInfor_Analytical(self, X, latent_params):
+
+        mean, logVar = latent_params
+        mean = np.asarray(mean)
+        logVar = np.asarray(logVar)
+        
+        # 1. Analytical Conditional Entropy H(Z|X)
+        # Formula: 0.5 * sum(1 + ln(2pi) + logVar)
+        h_z_given_x = 0.5 * np.sum(1 + np.log(2 * np.pi) + logVar, axis=1)
+        H_Z_given_X = np.mean(h_z_given_x)
+        
+        # 2. Marginal Entropy H(Z)
+        # We estimate the true geometric spread of the latent space by 
+        # applying your KDE directly to the deterministic means.
+        H_Z = self.entropy_kde(mean)
+        
+        return float(H_Z - H_Z_given_X)
     
     # # ------------------------- KDE METHOD -------------------------
 
@@ -95,7 +114,7 @@ class MI_Estimator:
         dists_sq = np.maximum(dists_sq, 0)
         
         #sigma_scaled = self.sigma  # self.sigma * np.sqrt(d) (Scale sigma by dimension) ***********************IMP**********************
-        sigma_scaled = self.sigma# * np.sqrt(d) 
+        sigma_scaled = self.sigma * np.sqrt(d) 
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
 
