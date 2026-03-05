@@ -160,11 +160,11 @@ def VAE_info(model, dataset, device, epoch, num_samples, mi_estimator, mi_histor
     else: mi["input_latent"]  = mi_estimator.mutual_information(X, Z)
     mi["latent_output"] = mi_estimator.mutual_information(mean, Y)
 
-    if Variational:
-        mi['latent_points'] = mean
+    # if Variational:
+    #     mi['latent_points'] = mean
 
-    else:
-        mi['latent_points'] = Z
+    # else:
+    #     mi['latent_points'] = Z
     
     # Store the mi calculated
     mi_history.append(mi)

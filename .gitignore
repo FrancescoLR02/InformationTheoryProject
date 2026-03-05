@@ -3,3 +3,5 @@ __pycache__/
 .Rhistory
 Classes/__pycache__/
 Functions/__pycache__/
+
+*.pkl
