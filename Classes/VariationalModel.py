@@ -242,8 +242,8 @@ class VariationalAutoEncoder(nn.Module):
             plt.plot(epochs[start_epoch:], self.mse_history[start_epoch:], color='green', linewidth=2, label='MSE component')
 
             # KL component
-            if self.Variational:
-                plt.plot(epochs[start_epoch:], self.kl_history[start_epoch:], color='yellow', linewidth=2, label='KL div. component')
+            # if self.Variational:
+            #     plt.plot(epochs[start_epoch:], self.kl_history[start_epoch:], color='yellow', linewidth=2, label='KL div. component')
 
             # Penalty (if present)
             if self.penalty_history:
