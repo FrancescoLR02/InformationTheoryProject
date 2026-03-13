@@ -33,12 +33,15 @@ class MI_History:
         self.decoder = []
         self.input_latent = []
         self.latent_output = []
+
+        self.latent_points = []
     
     def append(self, mi_dict):
         self.encoder.append(mi_dict["encoder"])
         self.decoder.append(mi_dict["decoder"])
         self.input_latent.append(mi_dict["input_latent"])
         self.latent_output.append(mi_dict["latent_output"])
+        self.latent_points.append(mi_dict["latent_points"])
 
     def show(self, what="all"):
         what = what.lower().strip()

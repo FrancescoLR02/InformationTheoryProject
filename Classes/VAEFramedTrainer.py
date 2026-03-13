@@ -68,7 +68,8 @@ class VAEFramedTrainer:
                 raise ValueError(f"bit_type must be 'real', 'restricted', or 'discrete', you wrote '{bit_type}' not a valid choice.")
 
         if Variational:
-            kl_loss = -0.5 * torch.sum(1 + logVar - mean.pow(2) - logVar.exp())
+            beta = 0.1
+            kl_loss = -0.5 * torch.sum(1 + logVar - mean.pow(2) - logVar.exp()) * beta
         else:
             kl_loss = torch.tensor(0, device=self.device)
 
@@ -175,10 +176,10 @@ class VAEFramedTrainer:
 
             logging_string = f"[{config.name}] Epoch {epoch}/{epochs} | Train loss: {avg_total:.2f}"
 
-            if Variational:
-                avg_kl = total_kl / N
-                model.kl_history.append(avg_kl)
-                # logging_string += f" | KL: {avg_kl:.2f}"
+            # if Variational:
+            #     avg_kl = total_kl / N
+            #     model.kl_history.append(avg_kl)
+            #     # logging_string += f" | KL: {avg_kl:.2f}"
             
             if penalize_lambda:
                 avg_mse = total_mse / N
@@ -232,7 +233,8 @@ class VAEFramedTrainer:
                 num_samples=len(self.test_loader.dataset), # Activations for all test set are saved
                 mi_estimator=mi_estimator,
                 mi_history=mi_history,
-                RecorderActivat=recorder
+                RecorderActivat=recorder,
+                Variational=Variational
             )
             recorder.activate_recording(False)
 

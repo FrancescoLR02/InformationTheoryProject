@@ -35,7 +35,7 @@ class MI_Estimator:
         self.sigma  = sigma
         self.n_neig = n_neig
         self.method = self.create_method_array(method, default)
-        # for mi methods self.method = ["in_h", "h_z" ,"in_z", "z_h", "h_out", "z_out"]
+        #for mi methods self.method = ["in_h", "h_z" ,"in_z", "z_h", "h_out", "z_out"]
 
     def create_method_array(self, method, default):
         # if only a string is passed it is replicated 6 times
@@ -55,7 +55,7 @@ class MI_Estimator:
 
     # ------------------------- MUTUAL INFO -------------------------
 
-    def mutual_information(self, X, Y, method_layer):
+    def mutual_information(self, X, Y, method_layer = 'kde'):
         X = np.asarray(X)
         Y = np.asarray(Y)  
         # Reshape 1D arrays
@@ -66,6 +66,11 @@ class MI_Estimator:
             HX = self.entropy_kde(X)
             HY = self.entropy_kde(Y)
             HXY = self.entropy_kde(np.concatenate([X, Y], axis=1))
+
+            # N_samples = X.shape[0]
+            # print(f"Max possible entropy log(N): {np.log(N_samples):.4f}")
+            # print(f"H(X): {HX:.4f} | H(Y): {HY:.4f} | H(X,Y): {HXY:.4f}")
+
             return HX + HY - HXY
 
         if method_layer == "kraskov":
@@ -74,6 +79,25 @@ class MI_Estimator:
         if method_layer == "vae":
             print("self.entropy_vae(X, Y) TO BE IMPLEMENTED")
             #return self.entropy_vae(X, Y)
+
+    #Analytical result
+    def MutualInfor_Analytical(self, X, latent_params):
+
+        mean, logVar = latent_params
+        mean = np.asarray(mean)
+        logVar = np.asarray(logVar)
+        
+        # 1. Analytical Conditional Entropy H(Z|X)
+        # Formula: 0.5 * sum(1 + ln(2pi) + logVar)
+        h_z_given_x = 0.5 * np.sum(1 + np.log(2 * np.pi) + logVar, axis=1)
+        H_Z_given_X = np.mean(h_z_given_x)
+        
+        # 2. Marginal Entropy H(Z)
+        # We estimate the true geometric spread of the latent space by 
+        # applying your KDE directly to the deterministic means.
+        H_Z = self.entropy_kde(mean)
+        
+        return float(H_Z - H_Z_given_X)
     
     # # ------------------------- KDE METHOD -------------------------
 
@@ -90,12 +114,12 @@ class MI_Estimator:
         dists_sq = np.maximum(dists_sq, 0)
         
         #sigma_scaled = self.sigma  # self.sigma * np.sqrt(d) (Scale sigma by dimension) ***********************IMP**********************
-        sigma_scaled = self.sigma #* np.sqrt(d) 
+        sigma_scaled = self.sigma * np.sqrt(d) 
         kernel = np.exp(-dists_sq / (2 * sigma_scaled**2))
         return np.mean(kernel, axis=1)
 
 
-    # ------------------------- KDE METHOD -------------------------
+    # # ------------------------- KDE METHOD -------------------------
 
     # def entropy_kde(self, data):
     #     rho = self.density(data)
