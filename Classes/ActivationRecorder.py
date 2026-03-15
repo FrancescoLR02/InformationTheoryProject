@@ -206,7 +206,7 @@ class ActivationRecorder:
 
     # ----------------------------------ANIMATION FOR A LAYER---------------------------------------------------------
 
-    def AnimateActivationLayers(self, layer_name, num_bins=100, Debug=False):
+    def AnimateActivationLayers(self, layer_name, num_bins=100, Debug=False, savename="", quantile10=0.1, quantile90=0.9, y_proport=1.2, layer_title=""):
         """
         Create an animation showing how the activation distribution of a specific layer
         evolves across epochs. Uses get_layer(layer_name) to retrieve the data.
@@ -214,9 +214,10 @@ class ActivationRecorder:
 
         # Retrieve activations for this layer across epochs
         layer_epochs = self.get_layer(layer_name)
+        if layer_title == "": layer_title = layer_name
 
         # Prepare figure
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=(6.0, 5)) #(5.5, 5)
 
         # # Compute max histogram height across all epochs (for stable y‑axis)
         # max_count = 0
@@ -230,8 +231,8 @@ class ActivationRecorder:
         max_count = 0
         global_min = 0
         global_max = 1
-        quantile10 = 0.1
-        quantile90 = 0.9
+        quantile10 = quantile10
+        quantile90 = quantile90
 
         for epoch, data in enumerate(layer_epochs): # data are the activations for a specific epochs
             flat = data.flatten() # data is and array of shape (num_images,num_neurons_layer), need flatten to aggregate all activations
@@ -252,7 +253,7 @@ class ActivationRecorder:
 
 
         ax.set_xlim(quantile10, quantile90)
-        ax.set_ylim(0, max_count * 1.2) # extra 20% on y axis for visualization
+        ax.set_ylim(0, max_count * y_proport) # extra 20% on y axis for visualization
 
 
         # Update function for animation frames
@@ -263,15 +264,18 @@ class ActivationRecorder:
             ax.hist(data, bins=num_bins, range=(quantile10, quantile90), alpha=0.7, edgecolor='none')
 
             ax.set_xlim(quantile10, quantile90)
-            ax.set_ylim(0, max_count * 1.2) # extra 20% on y axis for visualization
+            ax.set_ylim(0, max_count * y_proport) # extra 20% on y axis for visualization
 
-            ax.set_title(f"Activation Distribution - {layer_name} (Epoch {frame+1})", fontsize=14)
+
+            ax.set_title(f"Activation Distribution - {layer_title} (Epoch {frame+1})", fontsize=14)
             ax.set_xlabel("Activation Value", fontsize=12)
-            ax.set_ylabel("Count", fontsize=12)
+            ax.set_ylabel("Counts", fontsize=12)
             ax.grid(True, alpha=0.3)
 
         # Build animation
         anim = FuncAnimation(fig, update, frames=len(layer_epochs), interval=500) #interval is just for frame/s setting
+        
+        if savename != "": anim.save(f"Images/{savename}", writer="ffmpeg")
 
         plt.close()
         return HTML(anim.to_jshtml())
