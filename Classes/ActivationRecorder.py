@@ -217,7 +217,7 @@ class ActivationRecorder:
         if layer_title == "": layer_title = layer_name
 
         # Prepare figure
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=(6.0, 5)) #(5.5, 5)
 
         # # Compute max histogram height across all epochs (for stable y‑axis)
         # max_count = 0
@@ -269,7 +269,7 @@ class ActivationRecorder:
 
             ax.set_title(f"Activation Distribution - {layer_title} (Epoch {frame+1})", fontsize=14)
             ax.set_xlabel("Activation Value", fontsize=12)
-            ax.set_ylabel("Count", fontsize=12)
+            ax.set_ylabel("Counts", fontsize=12)
             ax.grid(True, alpha=0.3)
 
         # Build animation
