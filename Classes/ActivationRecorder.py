@@ -159,7 +159,7 @@ class ActivationRecorder:
                                 figsize=(num_plots * 9, len(labels) * 4),
                                 squeeze=False)
 
-        fig.suptitle("Bit=1 frequency per latent neuron", fontsize=26)
+        fig.suptitle("Bit=1 frequency per latent neuron", fontsize=32)
 
         # Iterate over labels
         for row, digit in enumerate(labels):
@@ -179,8 +179,9 @@ class ActivationRecorder:
                         color=label_colors[digit], edgecolor="black")
             ax_left.set_ylim(0, 1)
             ax_left.grid(axis="y", alpha=0.3)
-            ax_left.set_xlabel("Neuron index", fontsize=14)
-            ax_left.set_ylabel("Fraction bit = 1", fontsize=14)
+            ax_left.set_xlabel("Neuron index", fontsize=20)
+            ax_left.set_ylabel("Fraction bit = 1", fontsize=20)
+            ax_left.tick_params(axis='both', labelsize=16)
 
             # --- RIGHT subplot: second half ---
             ax_right = axes[row, 1]
@@ -188,17 +189,22 @@ class ActivationRecorder:
                         color=label_colors[digit], edgecolor="black")
             ax_right.set_ylim(0, 1)
             ax_right.grid(axis="y", alpha=0.3)
-            ax_right.set_xlabel("Neuron index", fontsize=14)
+            ax_right.set_xlabel("Neuron index", fontsize=20)
+            ax_right.tick_params(axis='both', labelsize=16)
 
-            # --- Title for the whole row (centered above both plots) ---
-            # Use the left axis but center the title across the row
-            ax_left.set_title(f"Label {digit}", fontsize=20, weight="bold", color=label_colors[digit], pad=25, loc='right')
+            # --- Title for the whole row ---
+            ax_left.set_title(
+                f"Label {digit}",
+                fontsize=26,
+                weight="bold",
+                color=label_colors[digit],
+                pad=25,
+                loc='center'#'right'
+            )
 
-            # Titles for individual subplots (optional)
-            ax_left.text(0.5, 1.02, f"Neurons 0–{half-1}",
-                        transform=ax_left.transAxes, ha='center', fontsize=14)
-            ax_right.text(0.5, 1.02, f"Neurons {half}–{latentDim-1}",
-                        transform=ax_right.transAxes, ha='center', fontsize=14)
+            # Titles for individual subplots
+            #ax_left.text(0.5, 1.02, f"Neurons 0–{half-1}", transform=ax_left.transAxes, ha='center', fontsize=20)
+            #ax_right.text(0.5, 1.02, f"Neurons {half}–{latentDim-1}", transform=ax_right.transAxes, ha='center', fontsize=20)
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
         plt.show()
