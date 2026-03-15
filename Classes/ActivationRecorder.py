@@ -155,9 +155,7 @@ class ActivationRecorder:
         label_colors = {lab: cmap(i % 10) for i, lab in enumerate(labels)}
 
         # Prepare figure
-        fig, axes = plt.subplots(len(labels), num_plots,
-                                figsize=(num_plots * 9, len(labels) * 4),
-                                squeeze=False)
+        fig, axes = plt.subplots(len(labels), num_plots, figsize=(num_plots * 9, len(labels) * 4), squeeze=False)
 
         fig.suptitle("Bit=1 frequency per latent neuron", fontsize=32)
 
@@ -175,8 +173,7 @@ class ActivationRecorder:
 
             # --- LEFT subplot: first half ---
             ax_left = axes[row, 0]
-            ax_left.bar(np.arange(0, half), freq[:half],
-                        color=label_colors[digit], edgecolor="black")
+            ax_left.bar(np.arange(0, half), freq[:half], color=label_colors[digit], edgecolor="black")
             ax_left.set_ylim(0, 1)
             ax_left.grid(axis="y", alpha=0.3)
             ax_left.set_xlabel("Neuron index", fontsize=20)
@@ -199,12 +196,12 @@ class ActivationRecorder:
                 weight="bold",
                 color=label_colors[digit],
                 pad=25,
-                loc='center'#'right'
+                loc='right'
             )
 
             # Titles for individual subplots
-            #ax_left.text(0.5, 1.02, f"Neurons 0–{half-1}", transform=ax_left.transAxes, ha='center', fontsize=20)
-            #ax_right.text(0.5, 1.02, f"Neurons {half}–{latentDim-1}", transform=ax_right.transAxes, ha='center', fontsize=20)
+            ax_left.text(0.5, 1.02, f"Neurons 0–{half-1}", transform=ax_left.transAxes, ha='center', fontsize=20)
+            ax_right.text(0.5, 1.02, f"Neurons {half}–{latentDim-1}", transform=ax_right.transAxes, ha='center', fontsize=20)
 
         plt.tight_layout(rect=[0, 0, 1, 0.96])
         plt.show()
