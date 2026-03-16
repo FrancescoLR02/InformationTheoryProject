@@ -96,6 +96,7 @@ class VAEFramedTrainer:
         # Setup Optimizer
         lr = config.train_params.get("lr", 1e-3)
         optimizer = optim.Adam(model.parameters(), lr=lr)
+        #print(optimizer)
         
         # Setup Recorder
         recorder = ActivationRecorder()
